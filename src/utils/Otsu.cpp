@@ -38,7 +38,7 @@ int Otsu::computeTreshold(std::vector<int> histogram, int maxIntensity, int numb
 cv::Mat Otsu::computeTresholdOnImage(cv::Mat image, std::vector<int> histogram, int maxIntensity, int numberOfPixels)
 {
 	auto threshold = computeTreshold(histogram, maxIntensity, numberOfPixels);
-	return image > static_cast<double>(threshold);
+	return image > threshold;
 }
 
 Otsu::~Otsu()
