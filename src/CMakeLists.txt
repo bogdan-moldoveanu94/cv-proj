@@ -1,6 +1,6 @@
 file(GLOB_RECURSE CvLab_SRC_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp)
 include_directories( ${PROJECT_SOURCE_DIR}/include )
-SET(INPUT_FILE_PATH "./res/input.png")
+SET(INPUT_FILE_PATH "./res/input.jpg")
 add_executable(${CvLab_NAME} ${CvLab_SRC_FILES})
 
 target_link_libraries( ${CvLab_NAME} ${OpenCV_LIBS}  )
