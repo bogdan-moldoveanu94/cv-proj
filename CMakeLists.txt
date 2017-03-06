@@ -11,7 +11,8 @@ endif()
 set(CvLab_NAME "assignment1")
 set(CvLab_VERSION "0.1.0.${BUILD_NUMBER}")
 set(CvLab_BRIEF "${CV2017_NAME} is the first assignment of the computer vision course 2017")
-
+SET(GCC_COVERAGE_COMPILE_FLAGS "-std=c++11")
+add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
 # Setup default installation dir
 #

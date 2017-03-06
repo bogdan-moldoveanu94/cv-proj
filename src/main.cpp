@@ -10,21 +10,13 @@ using namespace cv;
 using namespace std;
 
 Mat image_rgb, image_grayscale;
-const char* keys =
-{
-	"{help h||}{@image |../res/lenna.png|input image name}"
-};
+
 
 int main( int argc, char* argv[] )
 {
-	CommandLineParser parser(argc, argv, keys);
-	
-	// first argument of the program is the image name
-	string filename = parser.get<string>(0);
-	cout << filename << endl;
-	image_rgb = imread(filename, 1);
+	image_rgb = imread(argv[1], 1);
 	if (image_rgb.empty()) {
-		cout << "Cannot read image " << filename.c_str();
+		cout << "Cannot read image ";
 		return -1;
 	}
 	// convert image to grayscale
