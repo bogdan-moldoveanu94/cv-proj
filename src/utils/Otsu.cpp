@@ -3,8 +3,9 @@
 
 int Otsu::computeTreshold(std::vector<int> histogram, int maxIntensity, int numberOfPixels)
 {
-	float threshold, var_max, sum, sum_B, q1, q2, miu1, miu2, sigma_t;
-	threshold = var_max = sum = sum_B = q1 = q2 = miu1 = miu2 = sigma_t = 0.0;
+	float  var_max, sum, sum_B, q1, q2, miu1, miu2, sigma_t;
+	var_max = sum = sum_B = q1 = q2 = miu1 = miu2 = sigma_t = 0.0;
+	int threshold = 0;
 	for (int i = 0; i <= maxIntensity; i++) {
 		sum += i * histogram.at(i);
 	}
@@ -36,6 +37,11 @@ int Otsu::computeTreshold(std::vector<int> histogram, int maxIntensity, int numb
 
 cv::Mat Otsu::computeTresholdOnImage(cv::Mat image, std::vector<int> histogram, int maxIntensity, int numberOfPixels)
 {
-	int threshold = computeTreshold(histogram, maxIntensity, numberOfPixels);
-	return image > static_cast<int>(threshold);
+	auto threshold = computeTreshold(histogram, maxIntensity, numberOfPixels);
+	return image > static_cast<double>(threshold);
+}
+
+Otsu::~Otsu()
+{
+	
 }

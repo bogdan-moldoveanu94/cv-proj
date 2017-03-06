@@ -32,28 +32,34 @@ int main( int argc, char* argv[] )
 	
 
 #pragma region otsu threshold computation
-	int numberOfPixels = image_grayscale.total();
+	auto numberOfPixels = image_grayscale.total();
 	auto max_intensity = 255;
 
 	Otsu otsuObj;
-	auto otsuTreshold = otsuObj.computeTreshold(histogram, max_intensity, numberOfPixels);
-	std::cout << "value from my impl: " << otsuTreshold << endl;
-	auto output = otsuObj.computeTresholdOnImage(image_grayscale, histogram, max_intensity, numberOfPixels);
 
+	// just to check that the threashold has the right value
+	//auto otsuTreshold = otsuObj.computeTreshold(histogram, max_intensity, numberOfPixels);
+	//std::cout << "value from my impl: " << otsuTreshold << endl;
+
+	auto output = otsuObj.computeTresholdOnImage(image_grayscale, histogram, max_intensity, numberOfPixels);
 #pragma endregion
 
 	// use built-in thresholding function from opencv in order to test our implementation
-	Mat otsu;
-	double th_val = cv::threshold(image_grayscale, otsu, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	std::cout << "value from built in: " << th_val << endl;
+
+	//Mat otsu;
+	//double th_val = cv::threshold(image_grayscale, otsu, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	//std::cout << "value from built in: " << th_val << endl;
+	//cv::imwrite("otsu.png", otsu);
+
 	cv::imwrite("hist.png", histImage);
-	cv::imwrite("otsu.png", otsu);
 	cv::imwrite("output.png", output);
-	cv::namedWindow("image", 1);
-	cv::imshow("image", output);
-	cv::imshow("image2", otsu);
-	cv::imshow("hist", histImage);
-	cv::waitKey();
+	
+	// comment out debugging code
+	//cv::namedWindow("image", 1);
+	//cv::imshow("image", output);
+	//cv::imshow("image2", otsu);
+	//cv::imshow("hist", histImage);
+	//cv::waitKey();
 
 	return 0;
 	
