@@ -1,5 +1,3 @@
-How to build:
-
 Bogdan Andrei Moldoveanu
 This is the first assignment for the Computer Vision course at UNIVE, spring 2017.
 
