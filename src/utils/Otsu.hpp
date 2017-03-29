@@ -1,9 +1,7 @@
 #pragma once
 #include <vector>
+#include <opencv2/core/mat.hpp>
 
-namespace cv {
-	class Mat;
-}
 
 class Otsu
 {
