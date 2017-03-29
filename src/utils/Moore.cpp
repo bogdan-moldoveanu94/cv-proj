@@ -3,9 +3,10 @@
 #include <tuple>
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/types_c.h>
+#include <opencv2/highgui.hpp>
 
-
-std::tuple<int, int> findStartPixel(cv::Mat image, std::tuple<int, int>& backtrack)
+cv::Point findStartPixel(cv::Mat image, cv::Point& backtrack)
 {
 	for (auto row = 0; row < image.rows; row++)
 	{
@@ -98,8 +99,8 @@ std::tuple<int, int> findNextPixel(cv::Mat image, std::tuple<int, int> currentPi
 cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 {
 	// construct white image
-	cv::Mat path(cv::Mat(image_padded.rows, image_padded.cols, CV_8U, cv::Scalar(0, 0, 0)));
-	//path.setTo(0, 0, 0);
+	cv::Mat path(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
+	path.setTo(0);
 	cv::imwrite("begin.png", path);
 
 	bool inside = false;
@@ -128,14 +129,14 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 				std::tuple<int, int> error = std::make_tuple(-1, -1);
 				std::tuple<int, int> currentPixel = firstPixel;
 				int iteration = 0; // first put a simple stopping criterion for test
-				cv::Mat tempImage(cv::Mat(image_padded.rows, image_padded.cols, CV_8U));
+				cv::Mat tempImage(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
 				tempImage.setTo(0);
 				do
 				{
 					//previousBacktrack = backtrack;
 
-					tempImage.at<cv::Vec3b>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = 255; // mark pixel as black on image; will change to a vector of points
-					image_color.at<cv::Vec3b>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = 255;
+					tempImage.at<uchar>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = 255; // mark pixel as black on image; will change to a vector of points
+					image_color.at<cv::Vec3b>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = cv::Vec3b(0,0,0);
 					currentPixel = findNextPixel(image_padded, currentPixel, backtrack);
 					if (currentPixel == error)
 					{
@@ -192,6 +193,8 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 	//image_padded = image_padded(roi);
 	//imshow("bla", image_color);
 	//waitKey();
+	cv::imshow("wat", path);
+	cv::waitKey();
 	return path;
 
 
