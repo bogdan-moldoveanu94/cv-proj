@@ -6,17 +6,30 @@
 #include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui.hpp>
 
+template<typename T>
+cv::Point operator -(const cv::Point & lhs, const cv::Point & rhs)
+{
+	return cv::Point(lhs.x + rhs.x, lhs.y + rhs.y);
+}
+
+template<typename T>
+cv::Point operator + (const cv::Point & lhs, const cv::Point & rhs)
+{
+	return cv::Point(lhs.x - rhs.x, lhs.y - rhs.y);
+}
+
+
 cv::Point findStartPixel(cv::Mat image, cv::Point& backtrack)
 {
 	for (auto row = 0; row < image.rows; row++)
 	{
 		for (auto col = 0; col <image.cols; col++)
 		{
-			backtrack = std::make_tuple(row, col);
+			backtrack = cv::Point(row, col);
 			auto test = image.at<uchar>(row, col);
 			if (image.at<uchar>(row, col) == 255)
 			{
-				auto val = std::make_tuple(row, col);
+				auto val = cv::Point(row, col);
 				return val;
 			}
 		}
@@ -24,11 +37,11 @@ cv::Point findStartPixel(cv::Mat image, cv::Point& backtrack)
 	return{};
 }
 
-std::vector<std::tuple<int, int>> getOrderedNeighbours(std::tuple<int, int> firstNeighbour)
+std::vector<cv::Point> getOrderedNeighbours(cv::Point firstNeighbour)
 {
-	std::vector<std::tuple<int, int>> neighbours = { std::make_tuple(-1,-1), std::make_tuple(-1, 0), std::make_tuple(-1,1),
-		std::make_tuple(0, 1), std::make_tuple(1, 1), std::make_tuple(1, 0), std::make_tuple(1,-1), std::make_tuple(0,-1) };
-	std::vector<std::tuple<int, int>> orderedNeighbours;
+	std::vector<cv::Point> neighbours = { cv::Point(-1,-1),  cv::Point(-1, 0),  cv::Point(-1,1),
+		cv::Point(0, 1),  cv::Point(1, 1),  cv::Point(1, 0),  cv::Point(1,-1),  cv::Point(0,-1) };
+	std::vector<cv::Point> orderedNeighbours;
 	auto startingNeighbour = 0;
 	for (auto i = 0; i < neighbours.size(); i++)
 	{
@@ -54,27 +67,19 @@ std::vector<std::tuple<int, int>> getOrderedNeighbours(std::tuple<int, int> firs
 	return orderedNeighbours;
 }
 
-template<typename T>
-std::tuple<T, T> operator + (const std::tuple<T, T> & lhs, const std::tuple<T, T> & rhs)
-{
-	return std::tuple<T, T>(std::get<0>(lhs) + std::get<0>(rhs), std::get<1>(lhs) + std::get<1>(rhs));
-}
-
-template<typename T>
-std::tuple<T, T> operator - (const std::tuple<T, T> & lhs, const std::tuple<T, T> & rhs)
-{
-	return std::tuple<T, T>(std::get<0>(lhs) - std::get<0>(rhs), std::get<1>(lhs) - std::get<1>(rhs));
-}
-
-std::tuple<int, int> findNextPixel(cv::Mat image, std::tuple<int, int> currentPixel, std::tuple<int, int>& backtrack)
+cv::Point findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point& backtrack)
 {
 	auto startingOffset = backtrack;
 	auto orderedNeighbours = getOrderedNeighbours(startingOffset);
 
 	for (auto i = 0; i < orderedNeighbours.size(); ++i)
 	{
+		//std::cout << currentPixel.x << " " << currentPixel.y << std::endl;
+		//std::cout << orderedNeighbours[i].x << " " << orderedNeighbours[i].y << std::endl;
 		auto pos = currentPixel + orderedNeighbours[i];
-		if (image.at<uchar>(std::get<0>(pos), std::get<1>(pos)))
+		//std::cout << pos.x << " " << pos.y << std::endl;
+		//std::cout << std::endl;
+		if (image.at<uchar>(pos) == 255)
 		{
 			if (i != 0)
 			{
@@ -87,12 +92,10 @@ std::tuple<int, int> findNextPixel(cv::Mat image, std::tuple<int, int> currentPi
 
 			return currentPixel + orderedNeighbours[i];
 		}
+
+
 	}
-	return std::make_tuple(-1, -1);
-	std::cerr << "No next pixel - this means there was a pixel that is not connected to anything!" << std::endl;
-	exit(-1);
-
-
+	return cv::Point(-1, -1);
 }
 
 
@@ -102,7 +105,9 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 	cv::Mat path(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
 	path.setTo(0);
 	cv::imwrite("begin.png", path);
-
+	auto pct1 = cv::Point(1, 11);
+	auto pct2 = cv::Point(1, 10);
+	//std::cout << pct1 + pct2<< std::endl;
 	bool inside = false;
 	int i = 0;
 	for (auto row = 0; row < image_padded.rows; row++)
@@ -123,76 +128,43 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 			}
 			else if (image_padded.at<uchar>(row, col) == 255 && !inside)
 			{
-				std::tuple<int, int> backtrack;
-				std::tuple<int, int> previousBacktrack; // for jacobi stopping criterion
-				std::tuple<int, int> firstPixel = std::make_tuple(row, col);
-				std::tuple<int, int> error = std::make_tuple(-1, -1);
-				std::tuple<int, int> currentPixel = firstPixel;
+				cv::Point backtrack;
+				cv::Point previousBacktrack;
+				//std::tuple<int, int> previousBacktrack; // for jacobi stopping criterion
+				//cv::Point firstPixel = cv::Point(row, col);
+				// switch rows and cols for cv::point fmm
+				cv::Point firstPixel = cv::Point(col, row);
+				std::cout << " first pixel is: " << firstPixel.x << " " << firstPixel.y << std::endl;
+				cv::Point error = cv::Point(-1, -1);
+				cv::Point currentPixel = firstPixel;
 				int iteration = 0; // first put a simple stopping criterion for test
 				cv::Mat tempImage(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
 				tempImage.setTo(0);
 				do
 				{
-					//previousBacktrack = backtrack;
-
-					tempImage.at<uchar>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = 255; // mark pixel as black on image; will change to a vector of points
-					image_color.at<cv::Vec3b>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = cv::Vec3b(0,0,0);
+					tempImage.at<uchar>(currentPixel) = 255; // mark pixel as white on image; will change to a vector of points
+					//image_color.at<cv::Vec3b>(currentPixel) = cv::Vec3b(0, 0, 0);
 					currentPixel = findNextPixel(image_padded, currentPixel, backtrack);
 					if (currentPixel == error)
 					{
 						inside = true;
 						break;
 					}
-					//cout << "inside the loop: " << i << endl;
-					//i++;
-					//if(currentPixel == firstPixel)
-					//{
-
-					//}
 					iteration++;
-
 				} while (currentPixel != firstPixel);
-
-				tempImage.at<uchar>(std::get<0>(firstPixel), std::get<1>(firstPixel)) = 0;
+				std::cout << iteration << std::endl;
+				tempImage.at<uchar>(firstPixel) = 0;
+				//path.at<uchar>(firstPixel) = 255;
+				std::cout << "outside the loop";
 				if (iteration > 100 && iteration < 200)
 				{
-					//cout << "wrote an image";
-					//cv::Rect roi(cv::Point(0, 0), tempImage.size());
-					//tempImage.copyTo(path(roi));
-					//addWeighted(tempImage, 0.0, path, 0.0, 0.0, path);
-					//cv::Add(tempImage, path, path, NULL);
 					path += tempImage;
 				}
 				inside = true;
 			}
 		}
 	}
-	//std::tuple<int, int> backtrack;
-	//std::tuple<int, int> previousBacktrack; // for jacobi stopping criterion
-	//std::tuple<int, int> firstPixel = findStartPixel(image_padded, backtrack);
-
-	//std::tuple<int, int> currentPixel = firstPixel;
-	//do
-	//{
-	//	previousBacktrack = backtrack;
-	//	path.at<uchar>(std::get<0>(currentPixel), std::get<1>(currentPixel)) = 255; // mark pixel as black on image; will change to a vector of points
-	//	//cout << (int)path.at<uchar>((std::get<0>(currentPixel), std::get<1>(currentPixel))) << endl;
-	//	currentPixel = findNextPixel(image_padded, currentPixel, backtrack);
-	//	//cv::imshow("123", path);
-	//	//std::cout << "Current pixel: " << currentPixel << " with backtrack: " << backtrack << std::endl;
-	//	if(std::get<0>(currentPixel) == std::get<0>(firstPixel) && std::get<1>(currentPixel) == std::get<1>(firstPixel))
-	//	{
-	//		cout << " HERE0";
-	//	}
-	//	std::cout << "crt(" << std::get<0>(currentPixel) << ", " << std::get<1>(currentPixel) << ") vs (" << std::get<0>(firstPixel) << ", " << std::get<1>(firstPixel) << ")" << endl;
-	//} while (currentPixel != firstPixel && backtrack != previousBacktrack);
-
-	//// Close the loop
-	//path.at<uchar>(std::get<0>(firstPixel), std::get<1>(firstPixel)) = 0;
-	//cv::Rect roi(0, 0,image_padded.size().width, image_padded.size().height);
-	//image_padded = image_padded(roi);
-	//imshow("bla", image_color);
-	//waitKey();
+	std::cout << "done";
 	cv::imshow("wat", path);
 	cv::waitKey();
 	return path;

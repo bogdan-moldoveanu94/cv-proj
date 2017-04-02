@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 	cv::imwrite("otsucv.png", otsu);
 
 	Mat copyColor;
-	// pad image w/ 1 pixel white border
+	// pad image w/ 1 pixel black border
 	auto border = cv::Scalar(0);
 	std::cout << "otsu image: " << "rows: " << output.rows << " cols: " << output.cols << endl;
 	cv::copyMakeBorder(otsu, image_padded, 1, 1, 1, 1, BORDER_CONSTANT, border);
@@ -84,11 +84,12 @@ int main(int argc, char* argv[])
 	copyColor += output1;
 	//cv::Rect roi(0, 0, output1.size().width, output1.size().height);
 	//output1.copyTo(copyColor(roi));
-	//cv::imshow("image", copyColor);
+	cv::imshow("image", output1);
 	//cv::imwrite("boundaries.png", copyColor);
 
 	//cv::imshow("image2", otsu);
 	//cv::imshow("hist", histImage);
+
 	cv::waitKey();
 
 	return 0;
