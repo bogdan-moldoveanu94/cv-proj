@@ -6,38 +6,7 @@
 #include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui.hpp>
 
-template<typename T>
-cv::Point operator -(const cv::Point & lhs, const cv::Point & rhs)
-{
-	return cv::Point(lhs.x + rhs.x, lhs.y + rhs.y);
-}
-
-template<typename T>
-cv::Point operator + (const cv::Point & lhs, const cv::Point & rhs)
-{
-	return cv::Point(lhs.x - rhs.x, lhs.y - rhs.y);
-}
-
-
-cv::Point findStartPixel(cv::Mat image, cv::Point& backtrack)
-{
-	for (auto row = 0; row < image.rows; row++)
-	{
-		for (auto col = 0; col <image.cols; col++)
-		{
-			backtrack = cv::Point(row, col);
-			auto test = image.at<uchar>(row, col);
-			if (image.at<uchar>(row, col) == 255)
-			{
-				auto val = cv::Point(row, col);
-				return val;
-			}
-		}
-	}
-	return{};
-}
-
-std::vector<cv::Point> getOrderedNeighbours(cv::Point firstNeighbour)
+std::vector<cv::Point> Moore::getOrderedNeighbours(cv::Point firstNeighbour)
 {
 	std::vector<cv::Point> neighbours = { cv::Point(-1,-1),  cv::Point(-1, 0),  cv::Point(-1,1),
 		cv::Point(0, 1),  cv::Point(1, 1),  cv::Point(1, 0),  cv::Point(1,-1),  cv::Point(0,-1) };
@@ -67,18 +36,14 @@ std::vector<cv::Point> getOrderedNeighbours(cv::Point firstNeighbour)
 	return orderedNeighbours;
 }
 
-cv::Point findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point& backtrack)
+cv::Point Moore::findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point& backtrack)
 {
 	auto startingOffset = backtrack;
 	auto orderedNeighbours = getOrderedNeighbours(startingOffset);
 
 	for (auto i = 0; i < orderedNeighbours.size(); ++i)
 	{
-		//std::cout << currentPixel.x << " " << currentPixel.y << std::endl;
-		//std::cout << orderedNeighbours[i].x << " " << orderedNeighbours[i].y << std::endl;
 		auto pos = currentPixel + orderedNeighbours[i];
-		//std::cout << pos.x << " " << pos.y << std::endl;
-		//std::cout << std::endl;
 		if (image.at<uchar>(pos) == 255)
 		{
 			if (i != 0)
@@ -99,15 +64,11 @@ cv::Point findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point& backtr
 }
 
 
-cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
+cv::Mat Moore::computeBorders(cv::Mat image_padded)
 {
 	// construct white image
 	cv::Mat path(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
 	path.setTo(0);
-	cv::imwrite("begin.png", path);
-	auto pct1 = cv::Point(1, 11);
-	auto pct2 = cv::Point(1, 10);
-	//std::cout << pct1 + pct2<< std::endl;
 	bool inside = false;
 	int i = 0;
 	for (auto row = 0; row < image_padded.rows; row++)
@@ -130,9 +91,6 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 			{
 				cv::Point backtrack;
 				cv::Point previousBacktrack;
-				//std::tuple<int, int> previousBacktrack; // for jacobi stopping criterion
-				//cv::Point firstPixel = cv::Point(row, col);
-				// switch rows and cols for cv::point fmm
 				cv::Point firstPixel = cv::Point(col, row);
 				std::cout << " first pixel is: " << firstPixel.x << " " << firstPixel.y << std::endl;
 				cv::Point error = cv::Point(-1, -1);
@@ -143,7 +101,6 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 				do
 				{
 					tempImage.at<uchar>(currentPixel) = 255; // mark pixel as white on image; will change to a vector of points
-					//image_color.at<cv::Vec3b>(currentPixel) = cv::Vec3b(0, 0, 0);
 					currentPixel = findNextPixel(image_padded, currentPixel, backtrack);
 					if (currentPixel == error)
 					{
@@ -153,9 +110,7 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 					iteration++;
 				} while (currentPixel != firstPixel);
 				std::cout << iteration << std::endl;
-				tempImage.at<uchar>(firstPixel) = 0;
-				//path.at<uchar>(firstPixel) = 255;
-				std::cout << "outside the loop";
+				tempImage.at<uchar>(firstPixel) = 0; // close the loop
 				if (iteration > 100 && iteration < 200)
 				{
 					path += tempImage;
@@ -164,10 +119,5 @@ cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color)
 			}
 		}
 	}
-	std::cout << "done";
-	cv::imshow("wat", path);
-	cv::waitKey();
 	return path;
-
-
 }

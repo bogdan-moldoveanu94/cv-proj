@@ -1,20 +1,17 @@
 #pragma once
 #include <vector>
+#include <opencv2/core/mat.hpp>
 
 namespace cv {
 	class Mat;
 }
 
-std::tuple<int, int> findStartPixel(cv::Mat image, std::tuple<int, int>& backtrack);
+class Moore
+{
+	std::vector<cv::Point> getOrderedNeighbours(cv::Point firstNeighbour);
 
-std::vector<std::tuple<int, int>> getOrderedNeighbours(std::tuple<int, int> firstNeighbour);
-
-template<typename T>
-std::tuple<T, T> operator + (const std::tuple<T, T> & lhs, const std::tuple<T, T> & rhs);
-
-template<typename T>
-std::tuple<T, T> operator - (const std::tuple<T, T> & lhs, const std::tuple<T, T> & rhs);
-
-std::tuple<int, int> findNextPixel(cv::Mat image, std::tuple<int, int> currentPixel, std::tuple<int, int>& backtrack);
-
-cv::Mat Moore(cv::Mat image_padded, cv::Mat image_color);
+	cv::Point findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point& backtrack);
+	
+public:
+	cv::Mat computeBorders(cv::Mat image_padded);
+};

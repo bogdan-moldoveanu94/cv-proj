@@ -77,11 +77,20 @@ int main(int argc, char* argv[])
 
 	// comment out debugging code
 	//cv::namedWindow("image", 1);
-	auto output1 = Moore(image_padded, copyColor);
+	Moore moreObj;
+
+	auto output1 = moreObj.computeBorders(image_padded);
+	//output1 = output1(cv::Rect(0, 0, output1.cols - 1, output1.rows - 1));
+	Rect region_of_interest = Rect(1, 1, output1.cols - 2, output1.rows - 2);
+	//output1 = output1(region _of_interest);
+	Mat copy = image_rgb;
+	cout << "copy: " << copy.size().height << " " << copy.size().width << std::endl;
+	cout << "moore img: " <<  output1.size().height << " " << output1.size().width << std::endl;
+	//copy += output1;
 	//cout << output1;
 	//cv::drawContours(copyColor, output1, 1, RED, 2, 8);
 	//copyColor.setTo(Scalar(0, 0, 255), output1);
-	copyColor += output1;
+	//copyColor += output1;
 	//cv::Rect roi(0, 0, output1.size().width, output1.size().height);
 	//output1.copyTo(copyColor(roi));
 	cv::imshow("image", output1);
