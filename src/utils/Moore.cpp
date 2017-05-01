@@ -5,6 +5,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui.hpp>
+#include <unordered_map>
 
 cv::Mat Moore::padImage(cv::Mat image)
 {
@@ -69,45 +70,45 @@ cv::Point Moore::findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point&
 }
 
 
-std::vector<cv::Point> Moore::computeBorders(cv::Mat image_padded)
+std::vector<cv::Point> Moore::computeBorders(cv::Mat image) const
 {
 	// construct white image
-	cv::Mat path(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
+	cv::Mat path(cv::Mat(image.rows, image.cols, CV_THRESH_BINARY));
 	std::vector<cv::Point> tempPoints;
 	std::vector<cv::Point> points;
 	path.setTo(0);
 	bool inside = false;
 	int i = 0;
-	for (auto row = 0; row < image_padded.rows; row++)
+	for (auto row = 0; row < image.rows; row++)
 	{
-		for (auto col = 0; col < image_padded.cols; col++)
+		for (auto col = 0; col < image.cols; col++)
 		{
-			if (path.at<uchar>(row, col) == 255 && !inside)
+			if (path.at<uchar>(row, col) == 255 &&  !inside)
 			{
 				inside = true;
 			}
-			else if (image_padded.at<uchar>(row, col) == 255 && inside)
+			else if (image.at<uchar>(row, col) == 255 && inside)
 			{
 				continue;
 			}
-			else if (image_padded.at<uchar>(row, col) == 0 && inside)
+			else if (image.at<uchar>(row, col) == 0 && inside)
 			{
 				inside = false;
 			}
-			else if (image_padded.at<uchar>(row, col) == 255 && !inside)
+			else if (image.at<uchar>(row, col) == 255 && !inside)
 			{
 				cv::Point backtrack;
 				cv::Point firstPixel = cv::Point(col, row);
 				cv::Point error = cv::Point(-1, -1);
 				cv::Point currentPixel = firstPixel;
 				int iteration = 0; // first put a simple stopping criterion for test
-				cv::Mat tempImage(cv::Mat(image_padded.rows, image_padded.cols, CV_THRESH_BINARY));
+				cv::Mat tempImage(cv::Mat(image.rows, image.cols, CV_THRESH_BINARY));
 				tempImage.setTo(0);
 				do
 				{
 					tempImage.at<uchar>(currentPixel) = 255; // mark pixel as white on image; will change to a vector of points
 					tempPoints.push_back(currentPixel);
-					currentPixel = findNextPixel(image_padded, currentPixel, backtrack);
+					currentPixel = findNextPixel(image, currentPixel, backtrack);
 					if (currentPixel == error)
 					{
 						inside = true;

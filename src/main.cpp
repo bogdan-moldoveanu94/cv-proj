@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 #pragma endregion
 
 	
-
+#pragma region moore boundaries
 	Mat copyColor;
 	// pad image w/ 1 pixel black border
 	auto border = cv::Scalar(0);
@@ -63,23 +63,17 @@ int main(int argc, char* argv[])
 	Mat image_border(Mat(image_padded.rows, image_padded.cols, CV_8U));
 	image_border.setTo(255);
 
-	//cv::imwrite("hist.png", histImage);
 	cv::imwrite("output.png", output);
-
-	// comment out debugging code
-	//cv::namedWindow("image", 1);
 	Moore moreObj;
 
-	auto output1 = moreObj.computeBorders(image_padded);
-	for (std::vector<Point>::iterator it = output1.begin(); it != output1.end(); ++it) {
-		/* std::cout << *it; ... */
+	auto boundaryPoints = moreObj.computeBorders(image_padded);
+	for (auto it = boundaryPoints.begin(); it != boundaryPoints.end(); ++it)
+	{
 		copyColor.at<Vec3b>(*it) = RED;
 	}
-	//output1 = output1(cv::Rect(0, 0, output1.cols - 1, output1.rows - 1));
-	//Rect region_of_interest = Rect(1, 1, output1.cols - 2, output1.rows - 2);
-	//output1 = output1(region _of_interest);
+#pragma endregion
 	cv::imshow("image", copyColor);
-	//cv::imwrite("boundaries.png", copyColor);
+	cv::imwrite("boundaries.png", copyColor);
 
 
 	cv::waitKey();
