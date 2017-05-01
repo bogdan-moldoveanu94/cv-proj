@@ -50,22 +50,13 @@ int main(int argc, char* argv[])
 	auto output = otsuObj.computeTresholdOnImage(image_grayscale, histogram, max_intensity, numberOfPixels);
 #pragma endregion
 
-	// use built-in thresholding function from opencv in order to test our implementation
-
-	Mat otsu;
-	double th_val = cv::threshold(image_grayscale, otsu, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	//std::cout << "value from built in: " << th_val << endl;
-	otsu = otsu > th_val;
-	cv::imwrite("otsucv.png", otsu);
+	
 
 	Mat copyColor;
 	// pad image w/ 1 pixel black border
 	auto border = cv::Scalar(0);
-	std::cout << "otsu image: " << "rows: " << output.rows << " cols: " << output.cols << endl;
-	cv::copyMakeBorder(otsu, image_padded, 1, 1, 1, 1, BORDER_CONSTANT, border);
+	cv::copyMakeBorder(output, image_padded, 1, 1, 1, 1, BORDER_CONSTANT, border);
 	cv::copyMakeBorder(image_rgb, copyColor, 1, 1, 1, 1, BORDER_CONSTANT, border);
-	std::cout << "padded image: " << "rows: " << image_padded.rows << " cols: " << image_padded.cols;
-
 
 
 	// construct white image
@@ -80,24 +71,16 @@ int main(int argc, char* argv[])
 	Moore moreObj;
 
 	auto output1 = moreObj.computeBorders(image_padded);
+	for (std::vector<Point>::iterator it = output1.begin(); it != output1.end(); ++it) {
+		/* std::cout << *it; ... */
+		copyColor.at<Vec3b>(*it) = RED;
+	}
 	//output1 = output1(cv::Rect(0, 0, output1.cols - 1, output1.rows - 1));
-	Rect region_of_interest = Rect(1, 1, output1.cols - 2, output1.rows - 2);
+	//Rect region_of_interest = Rect(1, 1, output1.cols - 2, output1.rows - 2);
 	//output1 = output1(region _of_interest);
-	Mat copy = image_rgb;
-	cout << "copy: " << copy.size().height << " " << copy.size().width << std::endl;
-	cout << "moore img: " <<  output1.size().height << " " << output1.size().width << std::endl;
-	//copy += output1;
-	//cout << output1;
-	//cv::drawContours(copyColor, output1, 1, RED, 2, 8);
-	//copyColor.setTo(Scalar(0, 0, 255), output1);
-	//copyColor += output1;
-	//cv::Rect roi(0, 0, output1.size().width, output1.size().height);
-	//output1.copyTo(copyColor(roi));
-	cv::imshow("image", output1);
+	cv::imshow("image", copyColor);
 	//cv::imwrite("boundaries.png", copyColor);
 
-	//cv::imshow("image2", otsu);
-	//cv::imshow("hist", histImage);
 
 	cv::waitKey();
 
