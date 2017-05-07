@@ -5,17 +5,17 @@
 
 std::vector<int> Histogram::computeHistogramVector(cv::Mat image)
 {
-	histogram = new std::vector<int>(image.total());
+	std::vector<int> histogram(image.total());
 	for (auto row = 0; row < image.rows; row++) {
 		for (auto column = 0; column < image.cols; column++) {
 			auto pos = 0xFF & image.at<uchar>(row, column);
-			(*histogram)[pos]++;
+			(histogram)[pos]++;
 		}
 	}
-	return *histogram;
+	return histogram;
 }
 
-cv::Mat Histogram::computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight)
+cv::Mat Histogram::computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight) const
 {
 	auto hist = Histogram::computeHistogramVector(inputImage);
 	auto bin_w = cvRound(double(histWidth) / histSize);
