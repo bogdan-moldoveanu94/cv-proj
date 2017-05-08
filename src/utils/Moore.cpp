@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui.hpp>
 #include <unordered_map>
+#include <opencv2/imgproc.hpp>
 
 cv::Mat Moore::padImage(cv::Mat image)
 {
@@ -70,7 +71,7 @@ cv::Point Moore::findNextPixel(cv::Mat image, cv::Point currentPixel, cv::Point&
 }
 
 
-std::vector<cv::Point> Moore::computeBorders(cv::Mat image) const
+std::vector<cv::Point> Moore::computeBorders(cv::Mat image, int minLength, int maxLength)
 {
 	// construct white image
 	cv::Mat path(cv::Mat(image.rows, image.cols, CV_THRESH_BINARY));
@@ -120,7 +121,7 @@ std::vector<cv::Point> Moore::computeBorders(cv::Mat image) const
 
 				tempImage.at<uchar>(firstPixel) = 0; // close the loop
 				tempPoints.push_back(firstPixel);
-				if (iteration > 100 && iteration < 200)
+				if (iteration > minLength && iteration < maxLength)
 				{
 					// if the path meets the criteria print it's length and draw it on the image
 					std::cout << iteration << std::endl;
@@ -137,4 +138,37 @@ std::vector<cv::Point> Moore::computeBorders(cv::Mat image) const
 		}
 	}
 	return points;
+}
+
+cv::Mat Moore::performErosion(cv::Mat img, int erosionElem, int erosionSize)
+{
+	int dilation_type;
+	cv::Mat erosionResult;
+	int erosion_type = 0;
+	if (erosionElem == 0) { erosion_type = cv::MORPH_RECT; }
+	else if (erosionElem == 1) { erosion_type = cv::MORPH_CROSS; }
+	else if (erosionElem == 2) { erosion_type = cv::MORPH_ELLIPSE; }
+
+	cv::Mat element = cv::getStructuringElement(erosion_type,
+		cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1),
+		cv::Point(erosionSize, erosionSize));
+	/// Apply the dilation operation
+	cv::erode(img, erosionResult, element);
+	return erosionResult;
+}
+
+cv::Mat Moore::performDilation(cv::Mat img, int dilationElem, int dilationSize)
+{
+	int dilation_type = 0;
+	cv::Mat dilationResult;
+	if (dilationElem == 0) { dilation_type = cv::MORPH_RECT; }
+	else if (dilationElem == 1) { dilation_type = cv::MORPH_CROSS; }
+	else if (dilationElem == 2) { dilation_type = cv::MORPH_ELLIPSE; }
+
+	cv::Mat element = getStructuringElement(dilation_type,
+		cv::Size(2 * dilationSize + 1, 2 * dilationSize + 1),
+		cv::Point(dilationSize, dilationSize));
+	/// Apply the dilation operation
+	dilate(img, dilationResult, element);
+	return dilationResult;
 }

@@ -37,9 +37,10 @@ unsigned* Hough::transform(cv::Mat image)
 	return accu;
 }
 
-std::vector<std::pair<cv::Point, cv::Point>> Hough::getLines(cv::Mat image, int threshold)
+
+std::vector<std::pair<std::pair<cv::Point, cv::Point>, std::pair<int, int>>> Hough::getLines(cv::Mat image, int threshold)
 {
-	std::vector<std::pair<cv::Point, cv::Point>> lines;
+	std::vector<std::pair<std::pair<cv::Point, cv::Point>, std::pair<int, int>>> lines;
 
 	// to remove this and get them from the above function
 
@@ -99,11 +100,14 @@ std::vector<std::pair<cv::Point, cv::Point>> Hough::getLines(cv::Mat image, int 
 					y2 = image.rows - 0;
 					x2 = ((double)(r - (accuH / 2)) - ((y2 - (height / 2)) * sin(deg2rad(t)))) / cos(deg2rad(t)) + (width / 2);
 				}
-				lines.push_back(std::pair< cv::Point, cv::Point >(cv::Point(x1, y1), cv::Point(x2, y2)));
+				auto pointPair = std::make_pair(cv::Point(x1, y1), cv::Point(x2, y2));
+				auto rho = r > accuH / 2 ? -1 : 1; // 
+				auto polarCoords = std::make_pair(rho, t);
+				lines.push_back(std::pair<std::pair<cv::Point, cv::Point>,std::pair< int, int>>(pointPair, polarCoords));
 			}
 		}
 	}
-	std::cout << "lines: " << lines.size() << " " << threshold << std::endl;
+	//std::cout << "lines: " << lines.size() << " " << threshold << std::endl;
 	return lines;
 
 }

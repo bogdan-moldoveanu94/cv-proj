@@ -9,6 +9,6 @@ class Histogram
 {
 public:
 	static std::vector<int> computeHistogramVector(cv::Mat image);
-	cv::Mat computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight) const;
+	static cv::Mat computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight);
 	~Histogram();
 };

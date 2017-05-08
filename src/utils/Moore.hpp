@@ -15,5 +15,7 @@ private:
 	static cv::Mat padImage(cv::Mat image);
 	
 public:
-	std::vector<cv::Point> computeBorders(cv::Mat image_padded) const;
+	static std::vector<cv::Point> computeBorders(cv::Mat image, int minLength, int maxLength);
+	static cv::Mat performDilation(cv::Mat img, int dilationElem, int dilationSize);
+	static cv::Mat performErosion(cv::Mat, int erosionElem, int erosionSize);
 };

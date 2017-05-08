@@ -15,7 +15,7 @@ std::vector<int> Histogram::computeHistogramVector(cv::Mat image)
 	return histogram;
 }
 
-cv::Mat Histogram::computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight) const
+cv::Mat Histogram::computeHistogramImage(cv::Mat inputImage, int histSize, int histWidth, int histHeight)
 {
 	auto hist = Histogram::computeHistogramVector(inputImage);
 	auto bin_w = cvRound(double(histWidth) / histSize);
