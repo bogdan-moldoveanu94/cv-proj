@@ -124,7 +124,7 @@ std::vector<cv::Point> Moore::computeBorders(cv::Mat image, int minLength, int m
 				if (iteration > minLength && iteration < maxLength)
 				{
 					// if the path meets the criteria print it's length and draw it on the image
-					std::cout << iteration << std::endl;
+					std::cout << "Boundary length: " << iteration << std::endl;
 					path += tempImage;
 					points.insert(std::end(points), std::begin(tempPoints), std::end(tempPoints));
 					tempPoints.clear();
