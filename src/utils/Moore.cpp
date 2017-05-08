@@ -2,10 +2,8 @@
 #include <opencv2/core/mat.hpp>
 #include <tuple>
 #include <iostream>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui.hpp>
-#include <unordered_map>
 #include <opencv2/imgproc.hpp>
 
 cv::Mat Moore::padImage(cv::Mat image)
@@ -107,7 +105,8 @@ std::vector<cv::Point> Moore::computeBorders(cv::Mat image, int minLength, int m
 				tempImage.setTo(0);
 				do
 				{
-					tempImage.at<uchar>(currentPixel) = 255; // mark pixel as white on image; will change to a vector of points
+					// we have higher access speed for seeing if a pixel is marked at a certain location so we keep the tempimage
+					tempImage.at<uchar>(currentPixel) = 255; 
 					tempPoints.push_back(currentPixel);
 					currentPixel = findNextPixel(image, currentPixel, backtrack);
 					if (currentPixel == error)
@@ -140,6 +139,7 @@ std::vector<cv::Point> Moore::computeBorders(cv::Mat image, int minLength, int m
 	return points;
 }
 
+/* Helper function for performing erosion and dilation on a given matrix */
 cv::Mat Moore::performErosion(cv::Mat img, int erosionElem, int erosionSize)
 {
 	int dilation_type;
@@ -152,7 +152,7 @@ cv::Mat Moore::performErosion(cv::Mat img, int erosionElem, int erosionSize)
 	cv::Mat element = cv::getStructuringElement(erosion_type,
 		cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1),
 		cv::Point(erosionSize, erosionSize));
-	/// Apply the dilation operation
+	// Apply the dilation operation
 	cv::erode(img, erosionResult, element);
 	return erosionResult;
 }
@@ -168,7 +168,7 @@ cv::Mat Moore::performDilation(cv::Mat img, int dilationElem, int dilationSize)
 	cv::Mat element = getStructuringElement(dilation_type,
 		cv::Size(2 * dilationSize + 1, 2 * dilationSize + 1),
 		cv::Point(dilationSize, dilationSize));
-	/// Apply the dilation operation
+	// Apply the dilation operation
 	dilate(img, dilationResult, element);
 	return dilationResult;
 }

@@ -1,8 +1,6 @@
 #include <iostream>
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 #include "utils/Otsu.hpp"
-#include <fstream>
 #include "assignments/Assignment.hpp"
 
 using namespace cv;

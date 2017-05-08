@@ -89,37 +89,26 @@ void Assignment::runThirdAssignment(cv::VideoCapture capture)
 		cv::GaussianBlur(leftDialAreaGray, dst, cv::Size(5, 5), 0, 0);
 
 		// leave dilation and eroisons for now until we find better aproach
-		//auto erosionRes = Moore::performErosion(dst, 1, 3);
 		auto dilationRes = Moore::performDilation(dst, 0, 2);
-		//auto dilationRes = leftDialAreaGray.clone();
-		//dilationRes = Moore::performDilation(dilationRes, 0, 3);
-		//dilationRes = Moore::performDilation(dilationRes, 0, 3);
-		//auto erosion2 = Moore::performErosion(dilationRes, 1, 1);
+
+		// obtain edges
 		Canny(dilationRes, dst, 150, 450, 3);
 
-		//std::vector<std::vector<cv::Point>> contours;
-		//std::vector<cv::Vec4i> hierarchy;
-
-		//findContours(dst, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE, cv::Point(0, 0));
-		//for (unsigned int i = 0; i < contours.size(); i++) {
-		//	//if (hierarchy[i][3] >= 0)   //has parent, inner (hole) contour of a closed edge (looks good)
-		//	if (cv::contourArea(contours[i]) < 250) continue;
-		//	drawContours(dst, contours, i, cv::Scalar(255, 0, 0), 1, 8);
-		//}
-		//imshow("detected lines", dilationRes);
 		cv::cvtColor(dst, cdst, CV_GRAY2BGR);
 		std::vector<cv::Vec2f> lines;
-		//cv::HoughLines(dst, lines, 1, CV_PI / 180, 115, 0, 0);
-		auto linesHough = Hough::getLines(dst, 115);
-		auto angleAverage = 0;
-		auto rhoAverage = 1; // minus wins
-							 //auto linesCount = 0
-		for (auto it = linesHough.begin(); it != linesHough.end(); it++)
-		{
-			//cv::line(img_res, cv::Point(it->first.first, it->first.second), cv::Point(it->second.first, it->second.second), cv::Scalar(0, 0, 255), 2, 8);
-			cv::line(cdst, it->first.first, it->first.second, RED);
 
-			std::cout << "Rho: " << it->second.first << " " << "Angle: " << it->second.second << std::endl;
+		// set threshold to 115 pixel since this seems to give the best results
+		auto linesHough = Hough::getLines(dst, 115);
+
+		// when multiple lines are produced take the average angle and the sign of r to be the product of them
+		// for the velocity converter function
+		auto angleAverage = 0;
+		auto rhoAverage = 1; 
+
+		for (auto it = linesHough.begin(); it != linesHough.end(); ++it)
+		{
+			cv::line(cdst, it->first.first, it->first.second, RED);
+			//std::cout << "Rho: " << it->second.first << " " << "Angle: " << it->second.second << std::endl;
 			angleAverage += it->second.second;
 			rhoAverage *= it->second.first;
 		}
@@ -127,14 +116,11 @@ void Assignment::runThirdAssignment(cv::VideoCapture capture)
 		{
 			continue;
 		}
-		else
-		{
-			angleAverage /= linesHough.size();
-			auto tempVel = angleToVelocity(angleAverage, rhoAverage, prevVelocity > 155 ? true : false);
-			prevVelocity = tempVel != -1 ? tempVel : prevVelocity;
-			std::cout << "Velocity: " << prevVelocity << std::endl;
-			outfile << prevVelocity << "," << frameNumber / VIDEO_FPS << std::endl;
-		}
+		angleAverage /= linesHough.size();
+		auto tempVel = angleToVelocity(angleAverage, rhoAverage, prevVelocity > 155 ? true : false);
+		prevVelocity = tempVel != -1 ? tempVel : prevVelocity;
+		std::cout << "Frame: " << frame << " Time elapsed: " << frameNumber / VIDEO_FPS << " Angle: " << angleAverage << " Velocity: " << prevVelocity << std::endl;
+		outfile << prevVelocity << "," << frameNumber / VIDEO_FPS << std::endl;
 		imshow("detected lines", cdst);
 		cvWaitKey(10);
 	}
