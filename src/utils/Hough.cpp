@@ -7,7 +7,7 @@ double deg2rad(double degrees) {
 }
 
 
-unsigned* Hough::transform(cv::Mat image)
+std::vector<int> Hough::transform(cv::Mat image)
 {
 	
 	auto width = image.cols;
@@ -17,7 +17,8 @@ unsigned* Hough::transform(cv::Mat image)
 	auto accuH = houghH * 2.0;
 	auto accuW = 180;
 
-	auto accu = (unsigned int*)calloc(accuH * accuW, sizeof(unsigned int));
+	//auto accu = (unsigned int*)calloc(accuH * accuW, sizeof(unsigned int));
+	std::vector<int> accu(accuH * accuW + accuW);
 	double center_x = width / 2;
 	double center_y = height / 2;
 					
@@ -52,7 +53,7 @@ std::vector<std::pair<std::pair<cv::Point, cv::Point>, std::pair<int, int>>> Hou
 	auto accuW = 180;
 
 	auto accumulator = Hough::transform(image);
-	if(accumulator == nullptr)
+	if(accumulator.empty())
 	{
 		return lines;
 	}
@@ -107,7 +108,7 @@ std::vector<std::pair<std::pair<cv::Point, cv::Point>, std::pair<int, int>>> Hou
 			}
 		}
 	}
-	//std::cout << "lines: " << lines.size() << " " << threshold << std::endl;
+	//std::cout << "lines: " << lines.size() << " " << threshold << std::;
 	return lines;
 
 }

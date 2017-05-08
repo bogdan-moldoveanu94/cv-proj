@@ -9,6 +9,6 @@ class Hough
 {
 	
 public:
-	static unsigned* transform(cv::Mat image);
+	static std::vector<int> transform(cv::Mat image);
 	static std::vector<std::pair<std::pair<cv::Point, cv::Point>, std::pair<int, int>>> getLines(cv::Mat image, int treshold);
 };
