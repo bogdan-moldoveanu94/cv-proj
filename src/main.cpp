@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/core.hpp>
+#include "opencv2/shape.hpp"
 #include "utils/Otsu.hpp"
 #include "assignments/Assignment.hpp"
 #include <opencv2/imgcodecs.hpp>
@@ -12,6 +13,7 @@
 #include "opencv2/calib3d/calib3d.hpp"
 #include <opencv2/xfeatures2d.hpp>
 #include "../build/src/Helper.h"
+#include "../build/src/Marker.h"
 
 using namespace cv;
 using namespace std;
@@ -24,12 +26,19 @@ const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
 
 
-void doEveryting(cv::Mat image_rgb)
+void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 {
 	auto imageOriginal = image_rgb.clone();
 	//ifstream infile;
 	//infile.open("res/0P.png");
 	auto markerLeo = imread("C:\\Proj\\lab_ocv_template\\res\\0M.png");
+	if (markerLeo.empty())
+	{
+		cout << "Leo marker not found";
+		//return -1;
+	}
+	
+	auto markerVan = imread("C:\\Proj\\lab_ocv_template\\res\\1M.png");
 	if (markerLeo.empty())
 	{
 		cout << "Leo marker not found";
@@ -46,25 +55,126 @@ void doEveryting(cv::Mat image_rgb)
 	cv::cvtColor(image_rgb, image_grayscale, CV_RGB2GRAY);
 	auto imageGrayOrig = image_grayscale;
 	cv::Mat markerLeoOrig = markerLeo.clone();
+	cv::Mat markerVanOrig = markerVan.clone();
 	cv::cvtColor(markerLeo, markerLeo, CV_RGB2GRAY);
+	cv::cvtColor(markerVan, markerVan, CV_RGB2GRAY);
 
-	std::vector<cv::Point2f> markerCornerPoints;
-	markerCornerPoints.push_back(Point2f((float)0, (float)0));
-	markerCornerPoints.push_back(Point2f((float)0, (float)markerLeo.size().height));
-	markerCornerPoints.push_back(Point2f((float)markerLeo.size().width, (float)markerLeo.size().height));
-	markerCornerPoints.push_back(Point2f((float)markerLeo.size().width, (float)0));
+	//int morph_size = 0;
+	//cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
+	//cv::morphologyEx(markerLeo, markerLeo, cv::MORPH_CLOSE, element);
+	//cv::morphologyEx(markerVan, markerVan, cv::MORPH_CLOSE, element);
+	// erode image to better detect points
 
+	//markerLeo = Moore::performDilation(markerLeo, 0, 3);
+	//markerVan = Moore::performDilation(markerVan, 0, 3);
+	markerLeo = Moore::performErosion(markerLeo, 0, 5);
+	markerVan = Moore::performErosion(markerVan, 0, 9);
+
+	// use gaussian blur to get rid of noise
+	//cv::GaussianBlur(markerLeo, markerLeo, cv::Size(5, 5), 0, 0);
+	//cv::GaussianBlur(markerVan, markerVan, cv::Size(5, 5), 0, 0);
+	// threshold imagee for edge detection
+	cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	cv::threshold(markerVan, markerVan, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	//imshow("marker van", markerVan);
+	//imshow("marker leo", markerLeo);
+	Marker* markerObject = new Marker();
+	//markerLeo = markerObject->preProcessImage(markerLeo);
+	//markerVan = markerObject->preProcessImage(markerVan);
+	//imshow("van", markerVan);
+	cv::Mat cannyLeo, cannyVan;
+
+	cv::Canny(markerLeo, cannyLeo, 50, 50 * 3, 3);
+	cv::Canny(markerVan, cannyVan, 50, 50 * 3, 3);
+	vector<vector<Point>> leoContours, vanContours;
+	vector<Vec4i> leoH, vanH;
+	cv::findContours(markerLeo, leoContours, leoH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	cv::findContours(markerVan, vanContours, vanH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	vector<Moments> muLeo(leoContours.size());
+	for (int i = 0; i < leoContours.size(); i++)
+	{
+		muLeo[i] = moments(leoContours[i], false);
+	}
+
+	vector<Moments> muVan(vanContours.size());
+	for (int i = 0; i < vanContours.size(); i++)
+	{
+		muVan[i] = moments(vanContours[i], false);
+	}
+
+	/// Find the convex hull object for each contour
+	vector<vector<Point> >hull(leoContours.size());
+	vector<vector<Point> >hull1(leoContours.size());
+	std::vector<cv::Point> leoAggregated;
+	for (int i = 0; i < leoContours.size(); i++)
+	{
+		//convexHull(Mat(leoContours[i]), hull[i], false);
+		leoAggregated.insert(leoAggregated.end(), leoContours[i].begin(), leoContours[i].end());
+	}
+	std::vector<cv::Point> vanAggregated;
+	for (int i = 0; i < vanContours.size(); i++)
+	{
+		vanAggregated.insert(vanAggregated.end(), vanContours[i].begin(), vanContours[i].end());
+	}
+
+	Mat drawing1 = Mat::zeros(markerLeo.size(), CV_8UC3);
+	Mat drawing2 = Mat::zeros(markerVan.size(), CV_8UC3);
+	//for (int i = 0; i< leoContours.size(); i++)
+	//{
+	//	cv::Scalar color = cv::Scalar(255, 255, 0);
+	//	drawContours(drawing1, leoContours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+	//}
+	//for (int i = 0; i< vanContours.size(); i++)
+	//{
+	//	cv::Scalar color = cv::Scalar(255, 255, 0);
+	//	drawContours(drawing2, vanContours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+	//}
+	std::vector<std::vector<cv::Point>> vanAggregatedContainer, leoAggregatedContainer;
+	vanAggregatedContainer.push_back(vanAggregated);
+	leoAggregatedContainer.push_back(leoAggregated);
+	cv::Scalar color = cv::Scalar(255, 255, 0);
+	drawContours(drawing2, vanAggregatedContainer, 0, color, 1, 8, vector<Vec4i>(), 0, Point());
+	drawContours(drawing1, leoAggregatedContainer, 0, color, 1, 8, vector<Vec4i>(), 0, Point());
+	cv::imshow("hull leo", drawing1);
+	cv::imshow("hull van", drawing2);
+	std::vector< cv::Point2f > cornersCrop, cornersMarker;
+	int maxCorners = 2;
+	double qualityLevel = 0.01;
+	double minDistance = 20.;
+	cv::Mat mask;
+	int blockSize = 3;
+	bool useHarrisDetector = false;
+	double k = 0.04;
+	cv::goodFeaturesToTrack(markerLeo, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+	cv::goodFeaturesToTrack(markerVan, cornersMarker, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+
+	for (size_t i = 0; i < cornersCrop.size(); i++)
+	{
+		//cv::circle(markerLeo, cornersCrop[i], 10, cv::Scalar(255.), -1);
+	}
+
+	for (size_t i = 0; i < cornersMarker.size(); i++)
+	{
+		//cv::circle(markerVan, cornersMarker[i], 10, cv::Scalar(255.), -1);
+	}
+
+	//cv::imshow("marker leo features", markerLeo);
+	//cv::imshow("marker vanfeatures", markerVan);
 
 	//markerLeo = Moore::performDilation(markerLeo, 0, 2);
 	//cv::GaussianBlur(markerLeo, markerLeo, Size(5, 5), 0, 0);
 	//imshow("gauss", markerLeo);
-	cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU);
+	//cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU);
+	//cv::threshold(markerVan, markerVan, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU);
+
+	// detect lines
 	//imshow("wat", markerLeo);
-	auto markerLeoThresh = markerLeo;
-	Canny(markerLeo, markerLeo, 250, 150 * 3, 3);
+	auto markerLeoThresh = markerLeo.clone();
+	cv::Mat markerLeoCanny;
+	cv::Canny(markerLeo, markerLeoCanny, 250, 150 * 3, 3);
 	vector<vector<Point>> markerContours, detectedContours;
 	vector<Vec4i> markerHierarchy;
-	findContours(markerLeo, markerContours, markerHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	cv::findContours(markerLeoCanny, markerContours, markerHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	vector<Point> pointVector;
 	for (int i = 0; i< markerContours.size(); i++)
 	{
@@ -133,33 +243,24 @@ void doEveryting(cv::Mat image_rgb)
 	return 0;
 #endif
 	Mat thresholdedImage, gaussianBlurred;
-	image_grayscale = Moore::performErosion(image_grayscale, 0, 5);
-	//image_grayscale = Moore::performDilation(image_grayscale, 0, 1);
-	//
-	//imshow("adaptive", thresholdedImage);
-	cv::GaussianBlur(image_grayscale, gaussianBlurred, Size(7, 7), 0, 0);
-	//gaussianBlurred = image_grayscale.clone();
-	//Moore::performDilation(gaussianBlurred, 0, 7);
-	//Moore::performErosion(gaussianBlurred, 0, 5);
-	cv::threshold(gaussianBlurred, thresholdedImage, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	//cv::adaptiveThreshold(gaussianBlurred, thresholdedImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 11, 35);
-	//auto histogram = Histogram::computeHistogramVector(image_grayscale);
-	//auto histImage = Histogram::computeHistogramImage(image_grayscale, 256, 256, 256);
-	//cv::imwrite("hist.png", histImage);
-	//auto numberOfPixels = image_grayscale.total();
-	//auto otsuThresholdedImage = Otsu::computeTresholdOnImage(image_grayscale, histogram, 255, numberOfPixels);
+	//Marker* markerObject = new Marker();
+
+	thresholdedImage = markerObject->preProcessImage(image_rgb);
+	Mat drawing = Mat::zeros(thresholdedImage.size(), CV_8UC3);
+	vector<Vec4i> hierarchy;
+#if 0
 	Mat canny_output;
 	vector<vector<Point>> contours;
 
 	vector<vector<Point>> contoursOut;
 	vector<vector<Point>> contoursAll;
-	vector<Vec4i> hierarchy;
+
 
 	/// Detect edges using canny
 	Canny(thresholdedImage, canny_output, 150, 150 * 3, 3);
 	/// Find contours
 	findContours(canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+
 
 	for (int i = 0; i< contours.size(); i++)
 	{
@@ -187,7 +288,8 @@ void doEveryting(cv::Mat image_rgb)
 		for (size_t j = i + 1; j<contoursOut.size() - 1; j++)
 		{
 			auto m2 = contoursOut[j];
-			if (m1[i] == m2[j])
+			if(std::find_first_of(m1.begin(), m1.end(),
+				m2.begin(), m2.end()) != m1.end())
 			{
 				contoursOut.erase(contoursOut.begin() + j);
 				break;
@@ -201,74 +303,43 @@ void doEveryting(cv::Mat image_rgb)
 	//}
 	//imshow("all contour", drawing);
 	//cout << endl << "contour number: " << contoursOut.size() << endl;
-
+#endif
+	auto contoursOut = markerObject->findCandidateContours(thresholdedImage);
 	for (int contourId = 0; contourId < contoursOut.size(); contourId++)
 	{
-		auto points = contoursOut[contourId];
-		int left, right, top, bottom;
-		for (int i = 0; i < points.size(); i++)
-		{
-			if (i == 0) // initialize corner values
-			{
-				left = right = points[i].x;
-				top = bottom = points[i].y;
-			}
-
-			if (points[i].x < left)
-				left = points[i].x;
-
-			if (points[i].x > right)
-				right = points[i].x;
-
-			if (points[i].y < top)
-				top = points[i].y;
-
-			if (points[i].y > bottom)
-				bottom = points[i].y;
-		}
-		std::vector<cv::Point> box_points;
-		box_points.push_back(cv::Point(left, top));
-		box_points.push_back(cv::Point(left, bottom));
-		box_points.push_back(cv::Point(right, bottom));
-		box_points.push_back(cv::Point(right, top));
-		cv::RotatedRect box = cv::minAreaRect(cv::Mat(box_points));
-		cv::Rect roi;
-		roi.x = box.center.x - (box.size.height / 2) - 5;
-		roi.y = box.center.y - (box.size.width / 2) - 5;
-		if(roi.x < 0 || roi.y < 0 )
-		{
-			break;
-		}
-		roi.width = box.size.height + 15;
-		roi.height = box.size.width + 15;
-		cout << roi.x << " " << roi.y << " " << roi.width << " " << roi.height;
+		auto roi = markerObject->convertContourToRoi(contoursOut[contourId]);
 		cv::Mat crop = image_rgb(roi);
+
+		std::vector<cv::Point2f> markerCornerPoints;
+		markerCornerPoints.push_back(Point2f((float)0, (float)0));
+		markerCornerPoints.push_back(Point2f((float)0, (float)crop.size().height));
+		markerCornerPoints.push_back(Point2f((float)crop.size().width, (float)crop.size().height));
+		markerCornerPoints.push_back(Point2f((float)crop.size().width, (float)0));
+
 		//imshow("first crop", crop);
 		cv::Mat processedCrop = image_grayscale(roi);
 		cv::Mat originalCrop = crop.clone();
 
 		cv::cvtColor(crop, crop, CV_RGB2GRAY);
 
-
-		std::vector<Point2f> convertedContours;
-		for (auto i = 0; i < contoursOut[contourId].size(); i++)
-		{
-			convertedContours.push_back(cv::Point2f((float)contoursOut[0][i].x, (float)contoursOut[0][i].y));
-		}
-		// Sort the points in anti-clockwise order
-		// Trace a line between the first and second point.
-		// If the third point is at the right side, then the points are anticlockwise
-		cv::Point v1 = convertedContours[1] - convertedContours[0];
-		cv::Point v2 = convertedContours[2] - convertedContours[0];
-		double o = (v1.x * v2.y) - (v1.y * v2.x);
-		if (o < 0.0) //if the third point is in the left side, then sort in anti-clockwise order
-			std::swap(convertedContours[1], convertedContours[3]);
-		std::reverse(convertedContours.begin(), convertedContours.end());
+		auto convertedContours = markerObject->orderContourPoints(contoursOut[contourId]);
 		auto H = cv::getPerspectiveTransform(convertedContours, markerCornerPoints);
 
 		cv::Mat canonicalMarker;
-		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, Size(255, 255));
-		canonicalMarker = canonicalMarker(Rect(30, 30, 200, 200));
+		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
+
+		//cv::resize(canonicalMarker, canonicalMarker, Size(canonicalMarker.size().width * 0.8, canonicalMarker.size().height*0.8));
+		cv::Rect canonicalRoi;
+		canonicalRoi.x = 15;
+		canonicalRoi.y = 15;
+		canonicalRoi.width = canonicalMarker.size().width - 30;
+		canonicalRoi.height = canonicalMarker.size().height - 30;
+		canonicalMarker = canonicalMarker(canonicalRoi);
+		//canonicalMarker = markerObject->preProcessImage(canonicalMarker);
+		//auto nimic = markerObject->preProcessImage(imageOriginal);
+		//cv::GaussianBlur(canonicalMarker, canonicalMarker, cv::Size(7, 7), 0, 0);
+		//imshow("w", canonicalMarker);
+		//canonicalMarker = canonicalMarker(Rect(30, 30, 200, 200));
 		//cv::threshold(canonicalMarker, canonicalMarker, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 		//cv::GaussianBlur(canonicalMarker, canonicalMarker, Size(9, 9), BORDER_DEFAULT);
 		//canonicalMarker = Moore::performDilation(canonicalMarker, 2, 2);
@@ -280,7 +351,8 @@ void doEveryting(cv::Mat image_rgb)
 		//Helper::findHomographyUsingContours(originalCrop, markerLeoOrig);
 		if (convertedContours.size() > 0)
 		{
-			Helper::findHomographyFeatures(crop, markerLeoOrig, convertedContours, markerCornerPoints, imageOriginal, roi);
+			//Helper::findHomographyFeatures(crop, markerLeoOrig, convertedContours, markerCornerPoints, imageOriginal, roi, outputVideo);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo,leoContours, vanContours, markerLeo, markerVan);
 			auto M = cv::findHomography(convertedContours, markerCornerPoints, RANSAC, 5.0);
 			cv::warpPerspective(monaImage, monaImage, M, monaImage.size());
 			//imshow("2",monaImage);
@@ -539,34 +611,43 @@ void doEveryting(cv::Mat image_rgb)
 		}
 	}
 #endif
-	//cv::waitKey(0);
+	cv::waitKey(0);
 }
 
 int main(int argc, char* argv[])
 {
 
-	cv::VideoCapture capture(argv[1]);
-	if (!capture.isOpened())
-	{
-		throw "Could not read file";
-	}
-	//Assignment::runThirdAssignment(capture);
-	cv::Mat frame;
-	for (;;)
-	{
-		capture >> frame;
-		if (frame.empty())
-		{
-			break;
-		}
-		doEveryting(frame);
-	}
-	// for image; TODO add abstraction for different types of imput
-	//image_rgb = imread(argv[1], 1);
-	//if (image_rgb.empty()) {
-	//	cout << "Cannot read image ";
-	//	return -1;
+	//cv::VideoCapture capture(argv[1]);
+	//if (!capture.isOpened())
+	//{
+	//	throw "Could not read file";
 	//}
+	////Assignment::runThirdAssignment(capture);
+	//// Setup output video
+	//cv::VideoWriter outputVideo("output.mp4",
+	//	capture.get(CV_CAP_PROP_FOURCC),
+	//	capture.get(CV_CAP_PROP_FPS),
+	//	cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+	//cv::Mat frame;
+	//for (;;)
+	//{
+	//	capture >> frame;
+	//	if (frame.empty())
+	//	{
+	//		break;
+	//	}
+	//	doEveryting(frame, outputVideo);
+	//}
+	//outputVideo.release();
+
+	cv::VideoWriter outputVideo;
+	// for image; TODO add abstraction for different types of imput
+	image_rgb = imread(argv[1], 1);
+	if (image_rgb.empty()) {
+		cout << "Cannot read image ";
+		return -1;
+	}
+	doEveryting(image_rgb, outputVideo);
 	//
 	return 0;
 }
