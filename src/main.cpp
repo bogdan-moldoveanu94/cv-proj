@@ -29,27 +29,22 @@ Marker* markerObject;
 void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 {
 	auto imageOriginal = image_rgb.clone();
-	//ifstream infile;
-	//infile.open("res/0P.png");
 	auto markerLeo = imread("C:\\Proj\\lab_ocv_template\\res\\0M.png");
 	if (markerLeo.empty())
 	{
 		cout << "Leo marker not found";
-		//return -1;
 	}
 	
 	auto markerVan = imread("C:\\Proj\\lab_ocv_template\\res\\1M.png");
 	if (markerLeo.empty())
 	{
 		cout << "Leo marker not found";
-		//return -1;
 	}
 
 	auto monaImage = imread("C:\\Proj\\lab_ocv_template\\res\\0P.png");
 	if (markerLeo.empty())
 	{
 		cout << "Mona image not found";
-		//return -1;
 	}
 
 	cv::cvtColor(image_rgb, image_grayscale, CV_RGB2GRAY);
@@ -59,26 +54,15 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 	cv::cvtColor(markerLeo, markerLeo, CV_RGB2GRAY);
 	cv::cvtColor(markerVan, markerVan, CV_RGB2GRAY);
 
-	//int morph_size = 0;
-	//cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
-	//cv::morphologyEx(markerLeo, markerLeo, cv::MORPH_CLOSE, element);
-	//cv::morphologyEx(markerVan, markerVan, cv::MORPH_CLOSE, element);
-	// erode image to better detect points
 
-	//markerLeo = Moore::performDilation(markerLeo, 0, 3);
-	//markerVan = Moore::performDilation(markerVan, 0, 3);
-	markerLeo = Moore::performErosion(markerLeo, 0, 5);
-	markerVan = Moore::performErosion(markerVan, 0, 9);
 
-	// use gaussian blur to get rid of noise
-	//cv::GaussianBlur(markerLeo, markerLeo, cv::Size(5, 5), 0, 0);
-	//cv::GaussianBlur(markerVan, markerVan, cv::Size(5, 5), 0, 0);
 	// threshold imagee for edge detection
 	cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	cv::threshold(markerVan, markerVan, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	//imshow("marker van", markerVan);
 	//imshow("marker leo", markerLeo);
-
+	markerLeo = Moore::performErosion(markerLeo, 0, 5);
+	markerVan = Moore::performErosion(markerVan, 0, 9);
 	//markerLeo = markerObject->preProcessImage(markerLeo);
 	//markerVan = markerObject->preProcessImage(markerVan);
 	//imshow("van", markerVan);
@@ -330,7 +314,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		if (convertedContours.size() > 0)
 		{
 			//Helper::findHomographyFeatures(crop, markerLeoOrig, convertedContours, markerCornerPoints, imageOriginal, roi, outputVideo);
-			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo,leoContours, vanContours, markerLeo, markerVan, canonicalMarkerOriginal);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo,leoContours, vanContours, canonicalMarkerOriginal);
 			auto M = cv::findHomography(convertedContours, markerCornerPoints, RANSAC, 5.0);
 			cv::warpPerspective(monaImage, monaImage, M, monaImage.size());
 			//imshow("2",monaImage);
@@ -350,97 +334,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		//cv::imshow("contours", drawing);
 	}
 
-#if 0
 
-
-	Ptr<cv::xfeatures2d::SiftFeatureDetector> dtor = cv::xfeatures2d::SiftFeatureDetector::create(100);
-	std::vector<cv::KeyPoint> markerKey, sceneKey;
-	cv::Mat markerDescriptors, sceneDescriptors;
-	dtor->detectAndCompute(markerLeo, noArray(), markerKey, markerDescriptors);
-	dtor->detectAndCompute(crop, noArray(), sceneKey, sceneDescriptors);
-
-	//-- Step 2: Matching descriptor vectors using FLANN matcher
-	FlannBasedMatcher matcher;
-	std::vector< DMatch > matches;
-	matcher.match(markerDescriptors, sceneDescriptors, matches);
-
-
-	double max_dist = 0; double min_dist = 150;
-	//-- Quick calculation of max and min distances between keypoints
-	for (int i = 0; i < markerDescriptors.rows; i++)
-	{
-		double dist = matches[i].distance;
-		if (dist < min_dist) min_dist = dist;
-		if (dist > max_dist) max_dist = dist;
-	}
-
-	std::vector< DMatch > good_matches;
-	for (int i = 0; i < markerDescriptors.rows; i++)
-	{
-		if (matches[i].distance <= max(2 * min_dist, 0.02))
-		{
-			good_matches.push_back(matches[i]);
-		}
-
-	}
-	//-- Draw only "good" matches
-	Mat img_matches;
-	drawMatches(markerLeo, markerKey, crop, sceneKey,
-		good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
-		vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-	//-- Show detected matches
-	imshow("Good Matches", img_matches);
-	vector<Point2f> markerH, sceneH;
-	for (int i = 0; i < good_matches.size(); i++)
-	{
-		//-- Get the keypoints from the good matches
-		markerH.push_back(markerKey[good_matches[i].queryIdx].pt);
-		sceneH.push_back(sceneKey[good_matches[i].trainIdx].pt);
-	}
-
-	auto H = cv::findHomography(markerH, sceneH, RANSAC, 5.0);
-	Mat wrapedMona;
-
-	//-- Get the corners from the image_1 ( the object to be "detected" )
-	std::vector<Point2f> obj_corners(4);
-	obj_corners[0] = cvPoint(0, 0); obj_corners[1] = cvPoint(markerLeo.cols, 0);
-	obj_corners[2] = cvPoint(markerLeo.cols, markerLeo.rows); obj_corners[3] = cvPoint(0, markerLeo.rows);
-	std::vector<Point2f> scene_corners(4);
-	perspectiveTransform(obj_corners, scene_corners, H);
-	//-- Draw lines between the corners (the mapped object in the scene - image_2 )
-	line(img_matches, scene_corners[0] + Point2f(markerLeo.cols, 0), scene_corners[1] + Point2f(markerLeo.cols, 0), Scalar(0, 255, 0), 4);
-	line(img_matches, scene_corners[1] + Point2f(markerLeo.cols, 0), scene_corners[2] + Point2f(markerLeo.cols, 0), Scalar(0, 255, 0), 4);
-	line(img_matches, scene_corners[2] + Point2f(markerLeo.cols, 0), scene_corners[3] + Point2f(markerLeo.cols, 0), Scalar(0, 255, 0), 4);
-	line(img_matches, scene_corners[3] + Point2f(markerLeo.cols, 0), scene_corners[0] + Point2f(markerLeo.cols, 0), Scalar(0, 255, 0), 4);
-	//-- Show detected matches
-	imshow("Good Matches & Object detection", img_matches);
-	cv::warpPerspective(monaImage, wrapedMona, H, Size(roi.size()));
-	wrapedMona.copyTo(image_rgb(roi));
-	imshow("wrapped mona", image_rgb);
-
-	crop = Moore::performErosion(crop, 0, 3);
-	//crop = Moore::performDilation(crop, 0, 3);
-	//cv::adaptiveThreshold(crop, crop, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 11, 25);
-	cv::GaussianBlur(crop, crop, Size(5, 5), 0, 0);
-	cv::threshold(crop, crop, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	//imshow("wat", crop);
-	std::vector<cv::KeyPoint> cropKeyPoints;
-	detector->detect(originalCrop, cropKeyPoints);
-
-
-	std::vector<Point2f> obj;
-	std::vector<Point2f> scene;
-	for (size_t i = 0; i < min(cropKeyPoints.size(), markerKeypoints.size()); i++)
-	{
-		//-- Get the keypoints from the good matches
-		//obj.push_back(markerKeypoints[markerKeypoints[i].queryIdx].pt);
-		//scene.push_back(cropKeyPoints[cropKeyPoints[i].trainIdx].pt);
-		obj.push_back(markerKeypoints[i].pt);
-		scene.push_back(cropKeyPoints[i].pt);
-	}
-	//auto homomograpgy = cv::findHomography(obj, scene, CV_RANSAC);
-	Mat markerLeoTransformed;
-#endif
 
 #if 0 
 	cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU);
@@ -594,37 +488,38 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 int main(int argc, char* argv[])
 {
 	markerObject = new Marker();
-	cv::VideoCapture capture(argv[1]);
-	if (!capture.isOpened())
-	{
-		throw "Could not read file";
-	}
-	//Assignment::runThirdAssignment(capture);
-	// Setup output video
-	cv::VideoWriter outputVideo("output.mp4",
-		capture.get(CV_CAP_PROP_FOURCC),
-		capture.get(CV_CAP_PROP_FPS),
-		cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-	cv::Mat frame;
-	for (;;)
-	{
-		capture >> frame;
-		if (frame.empty())
-		{
-			break;
-		}
-		doEveryting(frame, outputVideo);
-	}
-	outputVideo.release();
-	cv::waitKey(0);
-	//cv::VideoWriter outputVideo;
-	// for image; TODO add abstraction for different types of imput
-	//image_rgb = imread(argv[1], 1);
-	//if (image_rgb.empty()) {
-	//	cout << "Cannot read image ";
-	//	return -1;
+	//cv::VideoCapture capture(argv[1]);
+	//if (!capture.isOpened())
+	//{
+	//	throw "Could not read file";
 	//}
-	//doEveryting(image_rgb, outputVideo);
+	////Assignment::runThirdAssignment(capture);
+	//// Setup output video
+	//cv::VideoWriter outputVideo("output.mp4",
+	//	capture.get(CV_CAP_PROP_FOURCC),
+	//	capture.get(CV_CAP_PROP_FPS),
+	//	cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+	//cv::Mat frame;
+	//for (;;)
+	//{
+	//	capture >> frame;
+	//	if (frame.empty())
+	//	{
+	//		break;
+	//	}
+	//	doEveryting(frame, outputVideo);
+	//}
+	//outputVideo.release();
+
+	cv::VideoWriter outputVideo;
+	// for image; TODO add abstraction for different types of imput
+	image_rgb = imread(argv[1], 1);
+	if (image_rgb.empty()) {
+		cout << "Cannot read image ";
+		return -1;
+	}
+	doEveryting(image_rgb, outputVideo);
 	//
+	cv::waitKey(0);
 	return 0;
 }

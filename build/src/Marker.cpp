@@ -63,16 +63,27 @@ Marker::Marker()
 	markerCornerPoints.push_back(cv::Point2f((float)0, (float)markerLeo.size().height));
 	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)markerLeo.size().height));
 	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)0));
+
+	preProcessMarkers();
 	i = 0;
 }
 
+void Marker::preProcessMarkers()
+{
+	cv::cvtColor(markerLeo, markerLeo, CV_RGB2GRAY);
+	cv::cvtColor(markerVan, markerVan, CV_RGB2GRAY);
+
+	// threshold imagee for edge detection
+	cv::threshold(markerLeo, markerLeo, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	cv::threshold(markerVan, markerVan, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+
+	markerLeo = Moore::performErosion(markerLeo, 0, 5);
+	markerVan = Moore::performErosion(markerVan, 0, 9);
+}
 
 Marker::~Marker()
 {
-	delete &monaImage;
-	delete &vanImage;
-	delete &markerLeo;
-	delete &markerVan;
+
 }
 
 cv::Mat Marker::preProcessImage(cv::Mat image)
@@ -218,7 +229,7 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 
 
 void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, std::vector<std::vector<cv::Point>> leoContour,
-	std::vector<std::vector<cv::Point>> vanContour, cv::Mat leoMarker, cv::Mat vanMarker, cv::Mat canonicalMarkerOriginal)
+	std::vector<std::vector<cv::Point>> vanContour, cv::Mat canonicalMarkerOriginal)
 {
 	auto cropPointsInImage = cropPoints;
 	cropPoints.clear();
@@ -418,8 +429,8 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 		//auto leo = cv::matchShapes(cropP, leoP, 1, 0.0);
 		//auto van = cv::matchShapes(cropP, vanP, 1, 0.0);
 
-		auto leo = cv::matchShapes(leoMarker, marker, 2, 0.0);
-		auto van = cv::matchShapes(vanMarker, marker, 2, 0.0);
+		auto leo = cv::matchShapes(markerLeo, marker, 2, 0.0);
+		auto van = cv::matchShapes(markerVan, marker, 2, 0.0);
 		//imshow("leo", leoMarker);
 		//imshow("van", vanMarker);
 		//leo = leo1;
