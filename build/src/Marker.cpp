@@ -234,7 +234,7 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	cropPoints.clear();
 	//imshow("crop", crop);
 	int morph_size = 1;
-	cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
+	//cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
 	//cv::morphologyEx(marker, marker, cv::MORPH_CLOSE, element);
 	cv::resize(marker, marker, cv::Size(256, 256));
 	cv::resize(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(256, 256));
@@ -256,13 +256,14 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	// threshold imagee for edge detection
 	cv::threshold(marker, marker, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	cv::threshold(canonicalMarkerOriginal, canonicalMarkerOriginal, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	//imshow("canonical marker after processing" + std::to_string(i), marker);
+
 	cv::Mat cannyCrop;
 	cv::Mat cdst = marker.clone();
 	cvtColor(cdst, cdst, CV_GRAY2BGR);
 	cv::Canny(marker, cannyCrop, 50, 50 * 3, 3);
 	std::vector<cv::Vec2f> lines;
 	std::vector<cv::Vec2f> strongLines;
+
 	cv::HoughLines(cannyCrop, lines, 1, CV_PI / 180, 80, 0, 0);
 	if(lines.size()!= 0)
 	{
@@ -280,7 +281,6 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 		}
 	}
 
-	
 	if (strongLines.size() == 2)
 	{
 		std::cout << "marker detected!";
@@ -300,7 +300,7 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 		temp.push_back(pt1);
 		temp.push_back(pt2);
 		linesPoints.push_back(temp);
-		line(cdst, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
+		//line(cdst, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
 	}
 	//imshow("lines" + std::to_string(i), cdst);
 	//compute intersection point of lines
@@ -316,51 +316,27 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 
 	cropPoints = Helper::findCornersOnCrop(crop);
 	//imshow("canonical marker w/ roi", canonicalMarkerOriginal);
-	std::vector< cv::Point2f > cornersCrop, cornersMarker, markerFeatures, canonicalFeatures;
-	int maxCorners = 1;
-	double qualityLevel = 0.01;
-	double minDistance = 20.;
-	cv::Mat mask;
-	int blockSize = 3;
-	bool useHarrisDetector = false;
-	double k = 0.04;
+	//std::vector< cv::Point2f > cornersCrop, cornersMarker, markerFeatures, canonicalFeatures;
+	//int maxCorners = 1;
+	//double qualityLevel = 0.01;
+	//double minDistance = 20.;
+	//cv::Mat mask;
+	//int blockSize = 3;
+	//bool useHarrisDetector = false;
+	//double k = 0.04;
 
-	cv::goodFeaturesToTrack(crop, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-	cv::goodFeaturesToTrack(marker, markerFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-	cv::goodFeaturesToTrack(canonicalMarkerOriginal, canonicalFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-	for (size_t i = 0; i < markerFeatures.size(); i++)
-	{
-		cv::circle(crop, markerFeatures[i], 10, cv::Scalar(255.), -1);
-	}
-	cv::Mat wat = canonicalMarkerOriginal.clone();
-	for (size_t i = 0; i < canonicalFeatures.size(); i++)
-	{
-		cv::circle(wat, canonicalFeatures[i], 10, cv::Scalar(255.), -1);
-	}
-	//cv::imshow("original crop canonical feature"+std::to_string(i), wat);
-	//imshow("crop feature"+std::to_string(i), crop);
+	//cv::goodFeaturesToTrack(crop, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+	//cv::goodFeaturesToTrack(marker, markerFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+	//cv::goodFeaturesToTrack(canonicalMarkerOriginal, canonicalFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
 
-	//cv::Point2f bottomRightCorner;
-	//auto distance = -1;;
-	//auto bottomRightPointIndex = -1;
-	//for (auto i = 0; i< cropPoints.size(); i++)
-	//{
-	//	auto tempDistance = cv::norm(cornersCrop[0] - cropPoints[i]);
-	//	if (tempDistance > distance)
-	//	{
-	//		distance = tempDistance;
-	//		bottomRightPointIndex = i;
-	//	}
-	//}
+
 	if (found)
 	{
-
 		cv::Point2f bottomRightCorner;
 		auto distance = -1;;
 		auto bottomRightPointIndex = -1;
 		for (auto i = 0; i < markerCornerPoints.size(); i++)
 		{
-			//auto tempDistance = cv::norm(canonicalFeatures[0] - markerCornerPoints[i]);
 			auto tempDistance = cv::norm(r - markerCornerPoints[i]);
 			if (tempDistance > distance)
 			{
@@ -368,54 +344,16 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 				bottomRightPointIndex = i;
 			}
 		}
-
-
 		auto markerNumber = -1;
 		std::vector<cv::Point> cropP, leoP, vanP;
 		std::vector<cv::Vec4i> hierarchy;
-		cv::Mat drawing = cv::Mat::zeros(marker.size(), CV_8UC3);
-		int minContourSize = 0;
-
-		std::vector<std::vector<cv::Point>> hull1(cropContours.size());
-		for (int i = 0; i < cropContours.size(); i++)
-		{
-			//convexHull(cv::Mat(cropContours[i]), hull1[i], false);
-		}
-		//for (int i = 0; i< cropContours.size(); i++)
-		//{
-		//	cv::Scalar color = cv::Scalar(255, 255, 0);
-		//	drawContours(drawing, cropContours, i, color, 2, 8, hierarchy, 0, cv::Point());
-		//}
-		std::vector<std::vector<cv::Point>> cropAggregatedContainer;
+		// keep this around atm for debug images
 		i = i + 1;
-		//imshow("drawing" + std::to_string(i), drawing);
-		//imshow("canonical", marker);
-		//cropContours = hull1;
-		for (auto i = 0; i < cropContours.size(); i++)
-		{
-			//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
-			if (cropContours[i].size() > minContourSize)
-			{
-				cropP.insert(cropP.end(), cropContours[i].begin(), cropContours[i].end());
-			}
-
-		}
-		cropAggregatedContainer.push_back(cropP);
-		cv::Scalar color = cv::Scalar(255, 255, 0);
-		drawContours(drawing, cropAggregatedContainer, 0, color, 2, 8, hierarchy, 0, cv::Point());
-		//cv::Ptr<cv::ShapeContextDistanceExtractor> distanceExtractor = cv::createShapeContextDistanceExtractor();
-		//float leo1 = distanceExtractor->computeDistance(cropP, leoP);
-		//float van1 = distanceExtractor->computeDistance(cropP, vanP);
-		//auto leo = cv::matchShapes(cropP, leoP, 1, 0.0);
-		//auto van = cv::matchShapes(cropP, vanP, 1, 0.0);
 
 		auto leo = cv::matchShapes(markerLeo, marker, 2, 0.0);
 		auto van = cv::matchShapes(markerVan, marker, 2, 0.0);
-		//imshow("leo", leoMarker);
-		//imshow("van", vanMarker);
-		//leo = leo1;
-		//van = van1;
-		if (/*leo > 1000 || van > 1500 */ strongLines.size() != 2)
+
+		if (strongLines.size() != 2)
 		{
 
 		}

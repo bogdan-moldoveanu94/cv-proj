@@ -84,13 +84,6 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 			}
 		}
 	}
-	//for (int i = 0; i< contoursOut.size(); i++)
-	//{
-	//	cv::Scalar color = cv::Scalar(255, 255, 0);
-	//	drawContours(drawing, contoursOut, i, color, 2, 8, hierarchy, 0, cv::Point());
-	//}
-	//imshow("all contour", drawing);
-	//cout << endl << "contour number: " << contoursOut.size() << endl;
 #endif
 	auto contoursOut = markerObject->findCandidateContours(thresholdedImage);
 	for (int contourId = 0; contourId < contoursOut.size(); contourId++)
@@ -118,7 +111,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		cv::Mat canonicalMarkerWithCorners;
 		
 		cv::warpPerspective(imageGrayOrig, canonicalMarkerWithCorners, H, cv::Size(crop.size().width - 20, crop.size().height - 20));
-		//cv::resize(canonicalMarker, canonicalMarker, Size(canonicalMarker.size().width * 0.8, canonicalMarker.size().height*0.8));
+
 		cv::Rect canonicalRoi;
 		canonicalRoi.x = 15;
 		canonicalRoi.y = 15;
@@ -151,25 +144,13 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		//Helper::findHomographyUsingContours(originalCrop, markerLeoOrig);
 		if (convertedContours.size() > 0)
 		{
-			//Helper::findHomographyFeatures(crop, markerLeoOrig, convertedContours, markerCornerPoints, imageOriginal, roi, outputVideo);
 			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo, canonicalMarkerOriginal);
-			auto M = cv::findHomography(convertedContours, markerCornerPoints, RANSAC, 5.0);
-			//cv::warpPerspective(monaImage, monaImage, M, monaImage.size());
-			//imshow("2",monaImage);
-			Mat wrapedMona;
-
-			for (int i = 0; i< contoursOut.size(); i++)
-			{
-				Scalar color = Scalar(255, 255, 0);
-				drawContours(drawing, contoursOut, i, color, 2, 8, hierarchy, 0, Point());
-			}
 		}
 		else
 		{
 			cout << "no contour before call" << endl;
 		}
 
-		//cv::imshow("contours", drawing);
 	}
 
 
@@ -286,41 +267,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		cropFeatures.push_back(pointVector);
 	}
 #endif
-	//Mat H = cv::findHomography(markerPoints, roiPoints, CV_RANSAC);
-	/// Draw contours
-#if 0
-	Mat dst, dst_norm, dst_norm_scaled;
-	dst = Mat::zeros(image_rgb.size(), CV_32FC1);
 
-	/// Detector parameters
-	int blockSize = 7;
-	int apertureSize = 3;
-	// was 0.04
-	double k = 0.14;
-	int thresh = 180;
-	int max_thresh = 255;
-	/// Detecting corners
-	cv::cvtColor(drawing, drawing, CV_RGB2GRAY);
-	cornerHarris(drawing, dst, blockSize, apertureSize, k, BORDER_DEFAULT);
-
-	/// Normalizing
-	normalize(dst, dst_norm, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
-	convertScaleAbs(dst_norm, dst_norm_scaled);
-
-	/// Drawing a circle around corners
-	for (int j = 0; j < dst_norm.rows; j++)
-	{
-		for (int i = 0; i < dst_norm.cols; i++)
-		{
-			if ((int)dst_norm.at<float>(j, i) > thresh)
-			{
-				Scalar color = Scalar(0);
-				circle(dst_norm_scaled, Point(i, j), 5, color, 2, 8, 0);
-			}
-		}
-	}
-#endif
-	
 }
 
 int main(int argc, char* argv[])
