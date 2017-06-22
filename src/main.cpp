@@ -24,7 +24,7 @@ const Scalar WHITE = cv::Scalar(255, 255, 255);
 const Vec3b RED = cv::Vec3b(0, 0, 255);
 const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
-
+Marker* markerObject;
 
 void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 {
@@ -78,7 +78,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 	cv::threshold(markerVan, markerVan, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	//imshow("marker van", markerVan);
 	//imshow("marker leo", markerLeo);
-	Marker* markerObject = new Marker();
+
 	//markerLeo = markerObject->preProcessImage(markerLeo);
 	//markerVan = markerObject->preProcessImage(markerVan);
 	//imshow("van", markerVan);
@@ -135,31 +135,33 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 	cv::Scalar color = cv::Scalar(255, 255, 0);
 	drawContours(drawing2, vanAggregatedContainer, 0, color, 1, 8, vector<Vec4i>(), 0, Point());
 	drawContours(drawing1, leoAggregatedContainer, 0, color, 1, 8, vector<Vec4i>(), 0, Point());
-	cv::imshow("hull leo", drawing1);
-	cv::imshow("hull van", drawing2);
+	//cv::imshow("hull leo", drawing1);
+	//cv::imshow("hull van", drawing2);
 	std::vector< cv::Point2f > cornersCrop, cornersMarker;
-	int maxCorners = 2;
+	int maxCorners = 1;
 	double qualityLevel = 0.01;
 	double minDistance = 20.;
 	cv::Mat mask;
 	int blockSize = 3;
 	bool useHarrisDetector = false;
 	double k = 0.04;
+	cv::Mat leoCircles = markerLeo.clone();
+	cv::Mat vanCircles = markerVan.clone();
 	cv::goodFeaturesToTrack(markerLeo, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
 	cv::goodFeaturesToTrack(markerVan, cornersMarker, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
 
 	for (size_t i = 0; i < cornersCrop.size(); i++)
 	{
-		//cv::circle(markerLeo, cornersCrop[i], 10, cv::Scalar(255.), -1);
+		cv::circle(leoCircles, cornersCrop[i], 10, cv::Scalar(255.), -1);
 	}
 
 	for (size_t i = 0; i < cornersMarker.size(); i++)
 	{
-		//cv::circle(markerVan, cornersMarker[i], 10, cv::Scalar(255.), -1);
+		cv::circle(vanCircles, cornersMarker[i], 10, cv::Scalar(255.), -1);
 	}
 
-	//cv::imshow("marker leo features", markerLeo);
-	//cv::imshow("marker vanfeatures", markerVan);
+	//cv::imshow("marker leo features", leoCircles);
+	//cv::imshow("marker vanfeatures", vanCircles);
 
 	//markerLeo = Moore::performDilation(markerLeo, 0, 2);
 	//cv::GaussianBlur(markerLeo, markerLeo, Size(5, 5), 0, 0);
@@ -206,42 +208,6 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 	//cv::Mat output;
 	//cv::drawKeypoints(markerLeo, markerKeypoints, output);
 	//cv::imwrite("sift_result.jpg", output);
-
-#if 0
-	Mat dst, dst_norm, dst_norm_scaled;
-	dst = Mat::zeros(image_rgb.size(), CV_32FC1);
-
-	/// Detector parameters
-	int blockSize = 7;
-	int apertureSize = 7;
-	// was 0.04
-	double k = 0.14;
-	int thresh = 180;
-	int max_thresh = 255;
-	/// Detecting corners
-	cornerHarris(image_grayscale, dst, blockSize, apertureSize, k, BORDER_DEFAULT);
-
-	/// Normalizing
-	normalize(dst, dst_norm, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
-	convertScaleAbs(dst_norm, dst_norm_scaled);
-
-	/// Drawing a circle around corners
-	for (int j = 0; j < dst_norm.rows; j++)
-	{
-		for (int i = 0; i < dst_norm.cols; i++)
-		{
-			if ((int)dst_norm.at<float>(j, i) > thresh)
-			{
-				circle(dst_norm_scaled, Point(i, j), 5, Scalar(0), 2, 8, 0);
-			}
-		}
-	}
-	/// Showing the result
-	namedWindow("corners", CV_WINDOW_AUTOSIZE);
-	imshow("corners", dst_norm_scaled);
-	waitKey(0);
-	return 0;
-#endif
 	Mat thresholdedImage, gaussianBlurred;
 	//Marker* markerObject = new Marker();
 
@@ -327,14 +293,26 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 
 		cv::Mat canonicalMarker;
 		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
-
+		cv::Mat canonicalMarkerWithCorners;
+		
+		cv::warpPerspective(imageGrayOrig, canonicalMarkerWithCorners, H, cv::Size(crop.size().width - 20, crop.size().height - 20));
 		//cv::resize(canonicalMarker, canonicalMarker, Size(canonicalMarker.size().width * 0.8, canonicalMarker.size().height*0.8));
 		cv::Rect canonicalRoi;
 		canonicalRoi.x = 15;
 		canonicalRoi.y = 15;
 		canonicalRoi.width = canonicalMarker.size().width - 30;
 		canonicalRoi.height = canonicalMarker.size().height - 30;
+		auto canonicalMarkerOriginal = canonicalMarkerWithCorners.clone();
 		canonicalMarker = canonicalMarker(canonicalRoi);
+		//imshow("can marker", canonicalMarker);
+		std::vector<cv::Point> canMarkerPoint;
+		cv::Mat cirlesMarker = canonicalMarkerOriginal.clone();
+		//cv::goodFeaturesToTrack(canonicalMarkerOriginal, canMarkerPoint, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+		//for (size_t i = 0; i < canMarkerPoint.size(); i++)
+		//{
+		//	cv::circle(cirlesMarker, canMarkerPoint[i], 10, cv::Scalar(255.), -1);
+		//}
+		//imshow("bigger can marker", cirlesMarker);
 		//canonicalMarker = markerObject->preProcessImage(canonicalMarker);
 		//auto nimic = markerObject->preProcessImage(imageOriginal);
 		//cv::GaussianBlur(canonicalMarker, canonicalMarker, cv::Size(7, 7), 0, 0);
@@ -352,7 +330,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		if (convertedContours.size() > 0)
 		{
 			//Helper::findHomographyFeatures(crop, markerLeoOrig, convertedContours, markerCornerPoints, imageOriginal, roi, outputVideo);
-			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo,leoContours, vanContours, markerLeo, markerVan);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo,leoContours, vanContours, markerLeo, markerVan, canonicalMarkerOriginal);
 			auto M = cv::findHomography(convertedContours, markerCornerPoints, RANSAC, 5.0);
 			cv::warpPerspective(monaImage, monaImage, M, monaImage.size());
 			//imshow("2",monaImage);
@@ -371,7 +349,6 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 
 		//cv::imshow("contours", drawing);
 	}
-
 
 #if 0
 
@@ -611,43 +588,43 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		}
 	}
 #endif
-	cv::waitKey(0);
+	
 }
 
 int main(int argc, char* argv[])
 {
-
-	//cv::VideoCapture capture(argv[1]);
-	//if (!capture.isOpened())
-	//{
-	//	throw "Could not read file";
-	//}
-	////Assignment::runThirdAssignment(capture);
-	//// Setup output video
-	//cv::VideoWriter outputVideo("output.mp4",
-	//	capture.get(CV_CAP_PROP_FOURCC),
-	//	capture.get(CV_CAP_PROP_FPS),
-	//	cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-	//cv::Mat frame;
-	//for (;;)
-	//{
-	//	capture >> frame;
-	//	if (frame.empty())
-	//	{
-	//		break;
-	//	}
-	//	doEveryting(frame, outputVideo);
-	//}
-	//outputVideo.release();
-
-	cv::VideoWriter outputVideo;
-	// for image; TODO add abstraction for different types of imput
-	image_rgb = imread(argv[1], 1);
-	if (image_rgb.empty()) {
-		cout << "Cannot read image ";
-		return -1;
+	markerObject = new Marker();
+	cv::VideoCapture capture(argv[1]);
+	if (!capture.isOpened())
+	{
+		throw "Could not read file";
 	}
-	doEveryting(image_rgb, outputVideo);
+	//Assignment::runThirdAssignment(capture);
+	// Setup output video
+	cv::VideoWriter outputVideo("output.mp4",
+		capture.get(CV_CAP_PROP_FOURCC),
+		capture.get(CV_CAP_PROP_FPS),
+		cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+	cv::Mat frame;
+	for (;;)
+	{
+		capture >> frame;
+		if (frame.empty())
+		{
+			break;
+		}
+		doEveryting(frame, outputVideo);
+	}
+	outputVideo.release();
+	cv::waitKey(0);
+	//cv::VideoWriter outputVideo;
+	// for image; TODO add abstraction for different types of imput
+	//image_rgb = imread(argv[1], 1);
+	//if (image_rgb.empty()) {
+	//	cout << "Cannot read image ";
+	//	return -1;
+	//}
+	//doEveryting(image_rgb, outputVideo);
 	//
 	return 0;
 }

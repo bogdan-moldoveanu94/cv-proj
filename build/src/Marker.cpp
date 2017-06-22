@@ -12,9 +12,26 @@
 
 
 #define DEBUG_MODE 0
+#define EPSILON 1E-5
 cv::Mat Marker::markerLeo, Marker::markerVan, Marker::vanImage, Marker::monaImage, Marker::imageColor;
 std::vector<cv::Point2f> Marker::markerCornerPoints;
 int i;
+
+bool intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2,
+	cv::Point2f &r)
+{
+	cv::Point2f x = o2 - o1;
+	cv::Point2f d1 = p1 - o1;
+	cv::Point2f d2 = p2 - o2;
+
+	float cross = d1.x*d2.y - d1.y*d2.x;
+	if (abs(cross) < /*EPS*/1e-8)
+		return false;
+
+	double t1 = (x.x * d2.y - x.y * d2.x) / cross;
+	r = o1 + d1 * t1;
+	return true;
+}
 Marker::Marker()
 {
 	monaImage = cv::imread("C:\\Proj\\lab_ocv_template\\res\\0P.png");
@@ -63,7 +80,7 @@ cv::Mat Marker::preProcessImage(cv::Mat image)
 	imageColor = image.clone();
 	// convert to grayscale
 	cv::cvtColor(image, imageGrayscale, CV_RGB2GRAY);
-	
+
 	// erode image to better detect points
 	imageGrayscale = Moore::performErosion(imageGrayscale, 0, 5);
 
@@ -89,7 +106,7 @@ std::vector<std::vector<cv::Point>> Marker::findCandidateContours(cv::Mat image)
 
 	cv::findContours(cannyOutput, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
-	for (int i = 0; i< contours.size(); i++)
+	for (int i = 0; i < contours.size(); i++)
 	{
 		if (contours[i].size() > 35)
 		{
@@ -106,10 +123,10 @@ std::vector<std::vector<cv::Point>> Marker::findCandidateContours(cv::Mat image)
 	}
 
 	// remove contours that have similar points between them
-	for (size_t i = 0; i<filteredContours.size(); i++)
+	for (size_t i = 0; i < filteredContours.size(); i++)
 	{
 		auto m1 = filteredContours[i];
-		for (size_t j = i + 1; j<filteredContours.size() - 1; j++)
+		for (size_t j = i + 1; j < filteredContours.size() - 1; j++)
 		{
 			auto m2 = filteredContours[j];
 			if (std::find_first_of(m1.begin(), m1.end(),
@@ -159,14 +176,22 @@ cv::Rect Marker::convertContourToRoi(std::vector<cv::Point> points) const
 	roi.y = box.center.y - (box.size.width / 2) - 5;
 	if (roi.x < 0 || roi.y < 0)
 	{
-		std::cout << "found roi is not good" << std::endl;;
+		// adjust roi in case we substracted too much
+		if(roi.x < 0)
+		{
+			roi.x = 0;
+		}
+		if(roi.y < 0)
+		{
+			roi.y = 0;
+		}
 	}
 	roi.width = box.size.height + 10;
 	roi.height = box.size.width + 10;
 	//std::cout << roi.x << " " << roi.y << " " << roi.width << " " << roi.height;
 	if (!(roi.x + roi.width <= imageGrayscale.cols))
 	{
-		roi.x = roi.x - 50;
+		roi.x = roi.x - 30;
 	}
 	return roi;
 }
@@ -193,7 +218,7 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 
 
 void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, std::vector<std::vector<cv::Point>> leoContour,
-                                    std::vector<std::vector<cv::Point>> vanContour, cv::Mat leoMarker, cv::Mat vanMarker)
+	std::vector<std::vector<cv::Point>> vanContour, cv::Mat leoMarker, cv::Mat vanMarker, cv::Mat canonicalMarkerOriginal)
 {
 	auto cropPointsInImage = cropPoints;
 	cropPoints.clear();
@@ -202,24 +227,86 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
 	//cv::morphologyEx(marker, marker, cv::MORPH_CLOSE, element);
 	cv::resize(marker, marker, cv::Size(256, 256));
+	cv::resize(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(256, 256));
+
+
+
+
 	// use gaussian blur to get rid of noise
 	cv::GaussianBlur(marker, marker, cv::Size(5, 5), 0, 0);
+	cv::GaussianBlur(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(5, 5), 0, 0);
 	// erode image to better detect points
 	//marker = Moore::performErosion(marker, 0, 1);
+
+	marker = Moore::performErosion(marker, 0, 5);
 	//marker = Moore::performDilation(marker, 0, 3);
-	marker = Moore::performErosion(marker, 0, 3);
+	canonicalMarkerOriginal = Moore::performErosion(canonicalMarkerOriginal, 0, 11);
+	canonicalMarkerOriginal = Moore::performDilation(canonicalMarkerOriginal, 0, 3);
 	//marker = Moore::performDilation(marker, 0, 1);
 	// threshold imagee for edge detection
 	cv::threshold(marker, marker, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	cv::threshold(canonicalMarkerOriginal, canonicalMarkerOriginal, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	//imshow("canonical marker after processing" + std::to_string(i), marker);
 	cv::Mat cannyCrop;
+	cv::Mat cdst = marker.clone();
+	cvtColor(cdst, cdst, CV_GRAY2BGR);
 	cv::Canny(marker, cannyCrop, 50, 50 * 3, 3);
+	std::vector<cv::Vec2f> lines;
+	std::vector<cv::Vec2f> strongLines;
+	cv::HoughLines(cannyCrop, lines, 1, CV_PI / 180, 80, 0, 0);
+	if(lines.size()!= 0)
+	{
+		float rho0 = lines[0][0], theta0 = lines[0][1];
+		strongLines.push_back(lines[0]);
+		for (auto i = 1; i < lines.size(); i++)
+		{
+			float rho = lines[i][0], theta = lines[i][1];
+			if (rho > rho0 + 15 || theta > theta0 + 0.15 || rho - 15 < rho0 || theta - 0.15 < theta0)
+			{
+				strongLines.push_back(lines[i]);
+				break;
+			}
+
+		}
+	}
+
+	
+	if (strongLines.size() == 2)
+	{
+		std::cout << "marker detected!";
+	}
+	std::vector<std::vector<cv::Point2f>> linesPoints;
+	for (size_t i = 0; i < strongLines.size(); i++)
+	{
+		float rho = strongLines[i][0], theta = strongLines[i][1];
+		cv::Point pt1, pt2;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a*rho, y0 = b*rho;
+		pt1.x = cvRound(x0 + 1000 * (-b));
+		pt1.y = cvRound(y0 + 1000 * (a));
+		pt2.x = cvRound(x0 - 1000 * (-b));
+		pt2.y = cvRound(y0 - 1000 * (a));
+		std::vector<cv::Point2f> temp;
+		temp.push_back(pt1);
+		temp.push_back(pt2);
+		linesPoints.push_back(temp);
+		line(cdst, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
+	}
+	//imshow("lines" + std::to_string(i), cdst);
+	//compute intersection point of lines
+	cv::Point2f r;
+	auto found = false;
+	if(linesPoints.size() == 2)
+	{
+		found = intersection(linesPoints[0][0], linesPoints[0][1], linesPoints[1][0], linesPoints[1][1], r);
+	}
 	std::vector<std::vector<cv::Point>> cropContours;
 	std::vector<cv::Vec4i> cropH;
 	cv::findContours(cannyCrop, cropContours, cropH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
 	cropPoints = Helper::findCornersOnCrop(crop);
-	std::vector< cv::Point2f > cornersCrop, cornersMarker, markerFeatures;
+	//imshow("canonical marker w/ roi", canonicalMarkerOriginal);
+	std::vector< cv::Point2f > cornersCrop, cornersMarker, markerFeatures, canonicalFeatures;
 	int maxCorners = 1;
 	double qualityLevel = 0.01;
 	double minDistance = 20.;
@@ -230,139 +317,203 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 
 	cv::goodFeaturesToTrack(crop, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
 	cv::goodFeaturesToTrack(marker, markerFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
+	cv::goodFeaturesToTrack(canonicalMarkerOriginal, canonicalFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
 	for (size_t i = 0; i < markerFeatures.size(); i++)
 	{
 		cv::circle(crop, markerFeatures[i], 10, cv::Scalar(255.), -1);
 	}
+	cv::Mat wat = canonicalMarkerOriginal.clone();
+	for (size_t i = 0; i < canonicalFeatures.size(); i++)
+	{
+		cv::circle(wat, canonicalFeatures[i], 10, cv::Scalar(255.), -1);
+	}
+	//cv::imshow("original crop canonical feature"+std::to_string(i), wat);
 	//imshow("crop feature"+std::to_string(i), crop);
 
-	cv::Point2f bottomRightCorner;
-	auto distance = -1;;
-	auto bottomRightPointIndex = -1;
-	for (auto i = 0; i< cropPoints.size(); i++)
-	{
-		auto tempDistance = cv::norm(cornersCrop[0] - cropPoints[i]);
-		if (tempDistance > distance)
-		{
-			distance = tempDistance;
-			bottomRightPointIndex = i;
-		}
-	}
-	auto markerNumber = -1;
-	std::vector<cv::Point> cropP, leoP, vanP;
-	std::vector<cv::Vec4i> hierarchy;
-	cv::Mat drawing = cv::Mat::zeros(marker.size(), CV_8UC3);
-	int minContourSize = 0;
-
-	std::vector<std::vector<cv::Point>> hull1(cropContours.size());
-	for (int i = 0; i < cropContours.size(); i++)
-	{
-		//convexHull(cv::Mat(cropContours[i]), hull1[i], false);
-	}
-	//for (int i = 0; i< cropContours.size(); i++)
+	//cv::Point2f bottomRightCorner;
+	//auto distance = -1;;
+	//auto bottomRightPointIndex = -1;
+	//for (auto i = 0; i< cropPoints.size(); i++)
 	//{
-	//	cv::Scalar color = cv::Scalar(255, 255, 0);
-	//	drawContours(drawing, cropContours, i, color, 2, 8, hierarchy, 0, cv::Point());
+	//	auto tempDistance = cv::norm(cornersCrop[0] - cropPoints[i]);
+	//	if (tempDistance > distance)
+	//	{
+	//		distance = tempDistance;
+	//		bottomRightPointIndex = i;
+	//	}
 	//}
-	std::vector<std::vector<cv::Point>> cropAggregatedContainer;
-	i = i + 1;
-	//imshow("drawing" + std::to_string(i), drawing);
-	//imshow("canonical", marker);
-	//cropContours = hull1;
-	for (auto i = 0; i<cropContours.size(); i++)
+	if (found)
 	{
-		//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
-		if (cropContours[i].size() > minContourSize)
+
+		cv::Point2f bottomRightCorner;
+		auto distance = -1;;
+		auto bottomRightPointIndex = -1;
+		for (auto i = 0; i < markerCornerPoints.size(); i++)
 		{
-			cropP.insert(cropP.end(), cropContours[i].begin(), cropContours[i].end());
+			//auto tempDistance = cv::norm(canonicalFeatures[0] - markerCornerPoints[i]);
+			auto tempDistance = cv::norm(r - markerCornerPoints[i]);
+			if (tempDistance > distance)
+			{
+				distance = tempDistance;
+				bottomRightPointIndex = i;
+			}
 		}
 
-	}
-	cropAggregatedContainer.push_back(cropP);
-	cv::Scalar color = cv::Scalar(255, 255, 0);
-	drawContours(drawing, cropAggregatedContainer, 0, color, 2, 8, hierarchy, 0, cv::Point());
-	cv::imshow("drawing agg"+std::to_string(i), drawing);
-	for (auto i = 0; i<leoContour.size(); i++)
-	{
-		//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
-		if(leoContour[i].size() > minContourSize)
+
+		auto markerNumber = -1;
+		std::vector<cv::Point> cropP, leoP, vanP;
+		std::vector<cv::Vec4i> hierarchy;
+		cv::Mat drawing = cv::Mat::zeros(marker.size(), CV_8UC3);
+		int minContourSize = 0;
+
+		std::vector<std::vector<cv::Point>> hull1(cropContours.size());
+		for (int i = 0; i < cropContours.size(); i++)
 		{
-			leoP.insert(leoP.end(), leoContour[i].begin(), leoContour[i].end());
+			//convexHull(cv::Mat(cropContours[i]), hull1[i], false);
 		}
-		
-	}
-	for (auto i = 0; i<vanContour.size(); i++)
-	{
-		//std::copy(vanP.begin(), vanP.end(), std::back_inserter(vanContour[i]));
-		if(vanContour[i].size() > minContourSize)
+		//for (int i = 0; i< cropContours.size(); i++)
+		//{
+		//	cv::Scalar color = cv::Scalar(255, 255, 0);
+		//	drawContours(drawing, cropContours, i, color, 2, 8, hierarchy, 0, cv::Point());
+		//}
+		std::vector<std::vector<cv::Point>> cropAggregatedContainer;
+		i = i + 1;
+		//imshow("drawing" + std::to_string(i), drawing);
+		//imshow("canonical", marker);
+		//cropContours = hull1;
+		for (auto i = 0; i < cropContours.size(); i++)
 		{
-			vanP.insert(vanP.end(), vanContour[i].begin(), vanContour[i].end());
+			//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
+			if (cropContours[i].size() > minContourSize)
+			{
+				cropP.insert(cropP.end(), cropContours[i].begin(), cropContours[i].end());
+			}
+
 		}
-
-	}
-	//cv::Ptr<cv::ShapeContextDistanceExtractor> distanceExtractor = cv::createShapeContextDistanceExtractor();
-	//float leo1 = distanceExtractor->computeDistance(cropP, leoP);
-	//float van1 = distanceExtractor->computeDistance(cropP, vanP);
-	//auto leo = cv::matchShapes(cropP, leoP, 1, 0.0);
-	//auto van = cv::matchShapes(cropP, vanP, 1, 0.0);
-
-	auto leo = cv::matchShapes(leoMarker, marker, 2, 0.0);
-	auto van = cv::matchShapes(vanMarker, marker, 2, 0.0);
-	imshow("leo", leoMarker);
-	imshow("van", vanMarker);
-	//leo = leo1;
-	//van = van1;
-	if(/*leo > 1000 || van > 1500 */ 0)
-	{
-		
-	}
-	else
-	{
-
-		std::cout << "leo match:" << leo << std::endl;
-		std::cout << "van match: " << van << std::endl;
-		if (leo < van)
+		cropAggregatedContainer.push_back(cropP);
+		cv::Scalar color = cv::Scalar(255, 255, 0);
+		drawContours(drawing, cropAggregatedContainer, 0, color, 2, 8, hierarchy, 0, cv::Point());
+		//cv::imshow("drawing agg"+std::to_string(i), drawing);
+		for (auto i = 0; i < leoContour.size(); i++)
 		{
-			std::cout << "marker leo detected" << std::endl;
-			std::cout << std::endl;
-			markerNumber = 0;
+			//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
+			if (leoContour[i].size() > minContourSize)
+			{
+				leoP.insert(leoP.end(), leoContour[i].begin(), leoContour[i].end());
+			}
+
+		}
+		for (auto i = 0; i < vanContour.size(); i++)
+		{
+			//std::copy(vanP.begin(), vanP.end(), std::back_inserter(vanContour[i]));
+			if (vanContour[i].size() > minContourSize)
+			{
+				vanP.insert(vanP.end(), vanContour[i].begin(), vanContour[i].end());
+			}
+
+		}
+		//cv::Ptr<cv::ShapeContextDistanceExtractor> distanceExtractor = cv::createShapeContextDistanceExtractor();
+		//float leo1 = distanceExtractor->computeDistance(cropP, leoP);
+		//float van1 = distanceExtractor->computeDistance(cropP, vanP);
+		//auto leo = cv::matchShapes(cropP, leoP, 1, 0.0);
+		//auto van = cv::matchShapes(cropP, vanP, 1, 0.0);
+
+		auto leo = cv::matchShapes(leoMarker, marker, 2, 0.0);
+		auto van = cv::matchShapes(vanMarker, marker, 2, 0.0);
+		//imshow("leo", leoMarker);
+		//imshow("van", vanMarker);
+		//leo = leo1;
+		//van = van1;
+		if (/*leo > 1000 || van > 1500 */ strongLines.size() != 2)
+		{
+
 		}
 		else
 		{
-			std::cout << "marker van detected" << std::endl;
-			std::cout << std::endl;
-			markerNumber = 1;
-		}
-		if (cropPoints.size() > 0)
-		{
-			cv::Mat wrappedImage;
-			std::rotate(cropPoints.begin(), cropPoints.begin() + bottomRightPointIndex + markerNumber, cropPoints.end());
-			cv::Mat H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
-			if (markerNumber == 0)
+
+			std::cout << "leo match:" << leo << std::endl;
+			std::cout << "van match: " << van << std::endl;
+			if (leo < van)
 			{
-				cv::warpPerspective(monaImage, wrappedImage, H, crop.size());
+				std::cout << "marker leo detected" << std::endl;
+				std::cout << std::endl;
+				markerNumber = 0;
 			}
 			else
 			{
-				cv::warpPerspective(vanImage, wrappedImage, H, crop.size());
+				std::cout << "marker van detected" << std::endl;
+				std::cout << std::endl;
+				markerNumber = 1;
 			}
-
-
-			cv::Mat cropColor = originalImage(roi);
-			cv::Vec3b black = (0, 0, 0);
-			for (int i = 0; i < wrappedImage.size().width; i++)
+			if (cropPoints.size() > 0)
 			{
-				for (int j = 0; j < wrappedImage.size().height; j++)
+				cv::Mat wrappedImage;
+				auto additional = 0;
+				if (markerNumber == 0)
 				{
-					if (wrappedImage.at<cv::Vec3b>(cv::Point(i, j)) != black)
+					additional = 1;
+				}
+				std::rotate(cropPoints.begin(), cropPoints.begin() + bottomRightPointIndex, cropPoints.end());
+				std::rotate(cropPoints.begin(), cropPoints.begin() + 2 , cropPoints.end());
+				cv::Mat H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
+				if (markerNumber == 0)
+				{
+					cv::warpPerspective(monaImage, wrappedImage, H, crop.size());
+				}
+				else
+				{
+					cv::warpPerspective(vanImage, wrappedImage, H, crop.size());
+				}
+
+
+				cv::Mat cropColor = originalImage(roi);
+				cv::Vec3b black = (0, 0, 0);
+				for (int i = 0; i < wrappedImage.size().width; i++)
+				{
+					for (int j = 0; j < wrappedImage.size().height; j++)
 					{
-						(cropColor.at<cv::Vec3b>(cv::Point(i, j)) = wrappedImage.at<cv::Vec3b>(cv::Point(i, j)));
+						if (wrappedImage.at<cv::Vec3b>(cv::Point(i, j)) != black)
+						{
+							(cropColor.at<cv::Vec3b>(cv::Point(i, j)) = wrappedImage.at<cv::Vec3b>(cv::Point(i, j)));
+						}
 					}
 				}
+				cropColor.copyTo(originalImage(roi));
+				outputVideo << originalImage;
+				imshow("www", originalImage);
+				//cv::imshow("wat", monaImage);
 			}
-			cropColor.copyTo(originalImage(roi));
-			imshow("www", originalImage);
-			//cv::imshow("wat", monaImage);
 		}
 	}
 }
+
+static double maximum(double number1, double number2, double number3) {
+	return std::max(std::max(number1, number2), number3);
+}
+static bool almostEqual(double number1, double number2) {
+	return (std::abs(number1 - number2) <= (EPSILON * maximum(1.0, std::abs(number1), std::abs(number2))));
+}
+
+static bool lineIntersection(const cv::Point2f &a1, const cv::Point2f &b1, const cv::Point2f &a2,
+	const cv::Point2f &b2, cv::Point2f &intersection) {
+	double A1 = b1.y - a1.y;
+	double B1 = a1.x - b1.x;
+	double C1 = (a1.x * A1) + (a1.y * B1);
+
+	double A2 = b2.y - a2.y;
+	double B2 = a2.x - b2.x;
+	double C2 = (a2.x * A2) + (a2.y * B2);
+
+	double det = (A1 * B2) - (A2 * B1);
+
+	if (!almostEqual(det, 0)) {
+		intersection.x = static_cast<float>(((C1 * B2) - (C2 * B1)) / (det));
+		intersection.y = static_cast<float>(((C2 * A1) - (C1 * A2)) / (det));
+
+		return true;
+	}
+
+	return false;
+}
+
+
