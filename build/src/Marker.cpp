@@ -228,8 +228,7 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 }
 
 
-void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, std::vector<std::vector<cv::Point>> leoContour,
-	std::vector<std::vector<cv::Point>> vanContour, cv::Mat canonicalMarkerOriginal)
+void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal)
 {
 	auto cropPointsInImage = cropPoints;
 	cropPoints.clear();
@@ -404,25 +403,6 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 		cropAggregatedContainer.push_back(cropP);
 		cv::Scalar color = cv::Scalar(255, 255, 0);
 		drawContours(drawing, cropAggregatedContainer, 0, color, 2, 8, hierarchy, 0, cv::Point());
-		//cv::imshow("drawing agg"+std::to_string(i), drawing);
-		for (auto i = 0; i < leoContour.size(); i++)
-		{
-			//std::copy(leoP.begin(), leoP.end(), std::back_inserter(leoContour[i]));
-			if (leoContour[i].size() > minContourSize)
-			{
-				leoP.insert(leoP.end(), leoContour[i].begin(), leoContour[i].end());
-			}
-
-		}
-		for (auto i = 0; i < vanContour.size(); i++)
-		{
-			//std::copy(vanP.begin(), vanP.end(), std::back_inserter(vanContour[i]));
-			if (vanContour[i].size() > minContourSize)
-			{
-				vanP.insert(vanP.end(), vanContour[i].begin(), vanContour[i].end());
-			}
-
-		}
 		//cv::Ptr<cv::ShapeContextDistanceExtractor> distanceExtractor = cv::createShapeContextDistanceExtractor();
 		//float leo1 = distanceExtractor->computeDistance(cropP, leoP);
 		//float van1 = distanceExtractor->computeDistance(cropP, vanP);
