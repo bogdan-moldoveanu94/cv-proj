@@ -1,6 +1,5 @@
 #include <iostream>
 #include <opencv2/core.hpp>
-#include "opencv2/shape.hpp"
 #include "utils/Otsu.hpp"
 #include "assignments/Assignment.hpp"
 #include <opencv2/imgcodecs.hpp>
@@ -10,8 +9,6 @@
 #include <stdlib.h>
 #include "utils/Moore.hpp"
 #include <fstream>
-#include "opencv2/calib3d/calib3d.hpp"
-#include <opencv2/xfeatures2d.hpp>
 #include "../build/src/Helper.h"
 #include "../build/src/Marker.h"
 
@@ -26,7 +23,7 @@ const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
 Marker* markerObject;
 
-void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
+void processFrame(cv::Mat image_rgb)
 {
 
 	cv::cvtColor(image_rgb, image_grayscale, CV_RGB2GRAY);
@@ -37,10 +34,10 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 	vector<Vec4i> hierarchy;
 
 	auto contoursOut = markerObject->findCandidateContours(thresholdedImage);
-	for (int contourId = 0; contourId < contoursOut.size(); contourId++)
+	for (auto contourId = 0; contourId < contoursOut.size(); contourId++)
 	{
 		auto roi = markerObject->convertContourToRoi(contoursOut[contourId]);
-		cv::Mat crop = image_rgb(roi);
+		auto crop = image_rgb(roi);
 
 		cv::cvtColor(crop, crop, CV_RGB2GRAY);
 
@@ -132,7 +129,7 @@ int main(int argc, char* argv[])
 		{
 			break;
 		}
-		doEveryting(frame, outputVideo, fps);
+		processFrame(frame);
 	}
 	outputVideo.release();
 

@@ -167,8 +167,8 @@ std::vector<std::vector<cv::Point>> Marker::findCandidateContours(cv::Mat image)
 
 cv::Rect Marker::convertContourToRoi(std::vector<cv::Point> points) const
 {
-	int left, right, top, bottom;
-	for (int i = 0; i < points.size(); i++)
+	auto left = 0, right = 0, top = 0, bottom = 0;
+	for (auto i = 0; i < points.size(); i++)
 	{
 		if (i == 0) // initialize corner values
 		{
@@ -193,7 +193,7 @@ cv::Rect Marker::convertContourToRoi(std::vector<cv::Point> points) const
 	box_points.push_back(cv::Point(left, bottom));
 	box_points.push_back(cv::Point(right, bottom));
 	box_points.push_back(cv::Point(right, top));
-	cv::RotatedRect box = cv::minAreaRect(cv::Mat(box_points));
+	auto box = cv::minAreaRect(cv::Mat(box_points));
 
 	cv::Rect roi;
 	roi.x = box.center.x - (box.size.height / 2) - 5;
@@ -225,7 +225,7 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 	std::vector<cv::Point2f> convertedContours;
 	for (auto i = 0; i < contours.size(); i++)
 	{
-		convertedContours.push_back(cv::Point2f((float)contours[i].x, static_cast<float>(contours[i].y)));
+		convertedContours.push_back(cv::Point2f(static_cast<float>(contours[i].x), static_cast<float>(contours[i].y)));
 	}
 	// Sort the points in anti-clockwise order
 	// Trace a line between the first and second point.
@@ -296,7 +296,7 @@ void Marker::wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::P
 	}
 	std::rotate(cropPoints.begin(), cropPoints.begin() + bottomRightPointIndex, cropPoints.end());
 	std::rotate(cropPoints.begin(), cropPoints.begin() + 2, cropPoints.end());
-	cv::Mat H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
+	auto H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
 	if (markerNumber == 0)
 	{
 		cv::warpPerspective(monaImage, wrappedImage, H, roi.size());
@@ -350,7 +350,7 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 	std::vector<cv::Vec4i> cropH;
 	cv::findContours(cannyCrop, cropContours, cropH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
-	std::vector<cv::Point2f> cropPoints = Helper::findCornersOnCrop(crop);
+	auto cropPoints = Helper::findCornersOnCrop(crop);
 	if (found)
 	{
 		cv::Point2f bottomRightCorner;
