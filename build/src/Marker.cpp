@@ -226,16 +226,57 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 
 	return convertedContours;
 }
-
-
-void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps)
+bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>>* points)
 {
-	auto cropPointsInImage = cropPoints;
-	cropPoints.clear();
-	//imshow("crop", crop);
-	int morph_size = 1;
-	//cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
-	//cv::morphologyEx(marker, marker, cv::MORPH_CLOSE, element);
+	cv::Mat imageCanny;
+	std::vector<cv::Vec2f> lines;
+	std::vector<cv::Vec2f> strongLines;
+
+	cv::Canny(image, imageCanny, 50, 50 * 3, 3);
+
+	cv::HoughLines(imageCanny, lines, 1, CV_PI / 180, 80, 0, 0);
+	if (lines.size() != 0)
+	{
+		float rho0 = lines[0][0], theta0 = lines[0][1];
+		strongLines.push_back(lines[0]);
+		for (auto i = 1; i < lines.size(); i++)
+		{
+			float rho = lines[i][0], theta = lines[i][1];
+			if (rho > rho0 + 15 || theta > theta0 + 0.15 || rho - 15 < rho0 || theta - 0.15 < theta0)
+			{
+				strongLines.push_back(lines[i]);
+				break;
+			}
+
+		}
+	}
+
+	if (strongLines.size() != 2)
+	{
+		return false;
+	}
+
+	for (size_t i = 0; i < strongLines.size(); i++)
+	{
+		float rho = strongLines[i][0], theta = strongLines[i][1];
+		cv::Point pt1, pt2;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a*rho, y0 = b*rho;
+		pt1.x = cvRound(x0 + 1000 * (-b));
+		pt1.y = cvRound(y0 + 1000 * (a));
+		pt2.x = cvRound(x0 - 1000 * (-b));
+		pt2.y = cvRound(y0 - 1000 * (a));
+		std::vector<cv::Point2f> temp;
+		temp.push_back(pt1);
+		temp.push_back(pt2);
+		points->push_back(temp);
+	}
+	return true;
+}
+
+void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps)
+{
+
 	cv::resize(marker, marker, cv::Size(256, 256));
 	cv::resize(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(256, 256));
 	// use gaussian blur to get rid of noise
@@ -254,52 +295,9 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	cv::threshold(canonicalMarkerOriginal, canonicalMarkerOriginal, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 
 	cv::Mat cannyCrop;
-	cv::Mat cdst = marker.clone();
-	cvtColor(cdst, cdst, CV_GRAY2BGR);
-	cv::Canny(marker, cannyCrop, 50, 50 * 3, 3);
-	std::vector<cv::Vec2f> lines;
-	std::vector<cv::Vec2f> strongLines;
-
-	cv::HoughLines(cannyCrop, lines, 1, CV_PI / 180, 80, 0, 0);
-	if(lines.size()!= 0)
-	{
-		float rho0 = lines[0][0], theta0 = lines[0][1];
-		strongLines.push_back(lines[0]);
-		for (auto i = 1; i < lines.size(); i++)
-		{
-			float rho = lines[i][0], theta = lines[i][1];
-			if (rho > rho0 + 15 || theta > theta0 + 0.15 || rho - 15 < rho0 || theta - 0.15 < theta0)
-			{
-				strongLines.push_back(lines[i]);
-				break;
-			}
-
-		}
-	}
-
-	if (strongLines.size() == 2)
-	{
-		std::cout << "marker detected!";
-	}
 	std::vector<std::vector<cv::Point2f>> linesPoints;
-	for (size_t i = 0; i < strongLines.size(); i++)
-	{
-		float rho = strongLines[i][0], theta = strongLines[i][1];
-		cv::Point pt1, pt2;
-		double a = cos(theta), b = sin(theta);
-		double x0 = a*rho, y0 = b*rho;
-		pt1.x = cvRound(x0 + 1000 * (-b));
-		pt1.y = cvRound(y0 + 1000 * (a));
-		pt2.x = cvRound(x0 - 1000 * (-b));
-		pt2.y = cvRound(y0 - 1000 * (a));
-		std::vector<cv::Point2f> temp;
-		temp.push_back(pt1);
-		temp.push_back(pt2);
-		linesPoints.push_back(temp);
-		//line(cdst, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
-	}
-	//imshow("lines" + std::to_string(i), cdst);
-	//compute intersection point of lines
+	auto foundEnoughLines = Marker::detectStrongLinePoints(marker, &linesPoints);
+
 	cv::Point2f r;
 	auto found = false;
 	if(linesPoints.size() == 2)
@@ -310,7 +308,7 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	std::vector<cv::Vec4i> cropH;
 	cv::findContours(cannyCrop, cropContours, cropH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
-	cropPoints = Helper::findCornersOnCrop(crop);
+	std::vector<cv::Point2f> cropPoints = Helper::findCornersOnCrop(crop);
 	if (found)
 	{
 		cv::Point2f bottomRightCorner;
@@ -326,34 +324,36 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 			}
 		}
 		auto markerNumber = -1;
-		std::vector<cv::Point> cropP, leoP, vanP;
 		std::vector<cv::Vec4i> hierarchy;
-		// keep this around atm for debug images
-		//i = i + 1;
 
 		auto leo = cv::matchShapes(markerLeo, marker, 2, 0.0);
 		auto van = cv::matchShapes(markerVan, marker, 2, 0.0);
 
-		if (strongLines.size() != 2)
+		if (!foundEnoughLines)
 		{
 			imshow("edges", originalImage);
 			cv::waitKey(1000 / fps);
 		}
 		else
 		{
-
+#if DEBUG_MODE
 			std::cout << "leo match:" << leo << std::endl;
 			std::cout << "van match: " << van << std::endl;
+#endif
 			if (leo < van)
 			{
+#if DEBUG_MODE
 				std::cout << "marker leo detected" << std::endl;
 				std::cout << std::endl;
+#endif
 				markerNumber = 0;
 			}
 			else
 			{
+#if DEBUG_MODE
 				std::cout << "marker van detected" << std::endl;
 				std::cout << std::endl;
+#endif
 				markerNumber = 1;
 			}
 			if (cropPoints.size() > 0)

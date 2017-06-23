@@ -12,10 +12,12 @@ public:
 	std::vector<std::vector<cv::Point>> findCandidateContours(cv::Mat image) const;
 	cv::Rect convertContourToRoi(std::vector<cv::Point>) const;
 	std::vector<cv::Point2f> orderContourPoints(std::vector<cv::Point> contours) const;
-	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps);
+	static bool detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>>* points);
+	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps);
+	static std::vector<cv::Point2f> markerCornerPoints;
 private:
 	static cv::Mat markerLeo, markerVan, vanImage, monaImage, imageColor;
 	cv::Mat imageGrayscale;
-	static std::vector<cv::Point2f> markerCornerPoints;
+
 };
 

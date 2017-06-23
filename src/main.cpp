@@ -43,19 +43,10 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 		auto roi = markerObject->convertContourToRoi(contoursOut[contourId]);
 		cv::Mat crop = image_rgb(roi);
 
-		std::vector<cv::Point2f> markerCornerPoints;
-		markerCornerPoints.push_back(Point2f((float)0, (float)0));
-		markerCornerPoints.push_back(Point2f((float)0, (float)crop.size().height));
-		markerCornerPoints.push_back(Point2f((float)crop.size().width, (float)crop.size().height));
-		markerCornerPoints.push_back(Point2f((float)crop.size().width, (float)0));
-
-		cv::Mat processedCrop = image_grayscale(roi);
-		cv::Mat originalCrop = crop.clone();
-
 		cv::cvtColor(crop, crop, CV_RGB2GRAY);
 
 		auto convertedContours = markerObject->orderContourPoints(contoursOut[contourId]);
-		auto H = cv::getPerspectiveTransform(convertedContours, markerCornerPoints);
+		auto H = cv::getPerspectiveTransform(convertedContours, Marker::markerCornerPoints);
 
 		cv::Mat canonicalMarker;
 		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
@@ -79,12 +70,9 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 		auto canonicalMarkerOriginal = canonicalMarkerWithCorners.clone();
 		canonicalMarker = canonicalMarker(canonicalRoi);
 
-		std::vector<cv::Point> canMarkerPoint;
-		cv::Mat cirlesMarker = canonicalMarkerOriginal.clone();
-
 		if (convertedContours.size() > 0)
 		{
-			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo, canonicalMarkerOriginal, fps);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, imageOriginal, roi, outputVideo, canonicalMarkerOriginal, fps);
 		}
 		else
 		{
