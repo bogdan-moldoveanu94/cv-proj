@@ -9,7 +9,7 @@
 #include <iterator>
 
 
-#define DEBUG_MODE 0
+
 #define EPSILON 1E-5
 cv::Mat Marker::markerLeo, Marker::markerVan, Marker::vanImage, Marker::monaImage, Marker::imageColor;
 std::vector<cv::Point2f> Marker::markerCornerPoints;
@@ -185,11 +185,11 @@ cv::Rect Marker::convertContourToRoi(std::vector<cv::Point> points) const
 	if (roi.x < 0 || roi.y < 0)
 	{
 		// adjust roi in case we substracted too much
-		if(roi.x < 0)
+		if (roi.x < 0)
 		{
 			roi.x = 0;
 		}
-		if(roi.y < 0)
+		if (roi.y < 0)
 		{
 			roi.y = 0;
 		}
@@ -299,7 +299,8 @@ void Marker::wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::P
 }
 void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const
 {
-
+	i++;
+	//cv::imshow("www" + std::to_string(i), marker);
 	cv::resize(marker, marker, cv::Size(256, 256));
 	// use gaussian blur to get rid of noise
 	cv::GaussianBlur(marker, marker, cv::Size(5, 5), 0, 0);
@@ -318,7 +319,7 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 
 	cv::Point2f r;
 	auto found = false;
-	if(linesPoints.size() == 2)
+	if (linesPoints.size() == 2)
 	{
 		found = intersection(linesPoints[0][0], linesPoints[0][1], linesPoints[1][0], linesPoints[1][1], r);
 	}

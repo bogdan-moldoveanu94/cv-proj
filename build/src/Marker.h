@@ -2,6 +2,8 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/videoio.hpp>
 
+#define DEBUG_MODE 0
+
 class Marker
 {
 public:

@@ -4,15 +4,15 @@
 #include "assignments/Assignment.hpp"
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include "utils/Histogram.hpp"
 #include <opencv2/highgui.hpp>
 #include <stdlib.h>
 #include "utils/Moore.hpp"
 #include <fstream>
 #include "../build/src/Helper.h"
 #include "../build/src/Marker.h"
+#include <ctime>
 
-
+#define NUM_FRAMES 60
 cv::Mat image_rgb, image_grayscale, image_padded, frame_padded;
 const cv::Scalar BLACK = cv::Scalar(0, 0, 0);
 const cv::Scalar WHITE = cv::Scalar(255, 255, 255);
@@ -55,10 +55,10 @@ void processFrame(cv::Mat image)
 
 
 		cv::Rect canonicalRoi;
-		canonicalRoi.x = 15;
-		canonicalRoi.y = 15;
-		canonicalRoi.width = canonicalMarker.size().width - 30;
-		canonicalRoi.height = canonicalMarker.size().height - 30;
+		canonicalRoi.x = 5;
+		canonicalRoi.y = 5;
+		canonicalRoi.width = canonicalMarker.size().width - 5;
+		canonicalRoi.height = canonicalMarker.size().height - 5;
 		if (canonicalRoi.width < 10)
 		{
 			canonicalRoi.width = 10;
@@ -75,7 +75,9 @@ void processFrame(cv::Mat image)
 		}
 		else
 		{
+#if DEBUG_MODE 
 			std::cout << "no contour before call" << std::endl;
+#endif
 		}
 	}
 	cv::imshow("output", Marker::imageColor);
@@ -142,9 +144,23 @@ int main(int argc, char* argv[])
 			capture.get(CV_CAP_PROP_FOURCC),
 			capture.get(CV_CAP_PROP_FPS),
 			cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-		fps = capture.get(CV_CAP_PROP_FPS);
+
 		markerObject = new Marker();
+		// Start and end times
+		time_t start, end;
 		cv::Mat frame;
+		// Start time
+		time(&start);
+		for(auto i = 0;i<NUM_FRAMES; i++)
+		{
+			capture >> frame;
+		}
+		// End Time
+		time(&end);
+		// Time elapsed
+		double seconds = difftime(end, start);
+		// Calculate frames per second
+		fps = NUM_FRAMES / seconds;
 		for (;;)
 		{
 			capture >> frame;
