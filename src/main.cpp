@@ -20,7 +20,8 @@ const cv::Vec3b RED = cv::Vec3b(0, 0, 255);
 const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
 Marker* markerObject;
-
+int fps = 0;
+cv::VideoWriter outputVideo;
 enum INPUT_MODE
 {
 	IMAGE = 0,
@@ -28,13 +29,13 @@ enum INPUT_MODE
 	WEBCAM
 };
 
-void processFrame(cv::Mat image_rgb)
+void processFrame(cv::Mat image)
 {
 
-	cv::cvtColor(image_rgb, image_grayscale, CV_RGB2GRAY);
+	cv::cvtColor(image, image_grayscale, CV_RGB2GRAY);
 	auto imageGrayOrig = image_grayscale;
 
-	auto thresholdedImage = markerObject->preProcessImage(image_rgb);
+	auto thresholdedImage = markerObject->preProcessImage(image);
 	cv::Mat drawing = cv::Mat::zeros(thresholdedImage.size(), CV_8UC3);
 	std::vector<cv::Vec4i> hierarchy;
 
@@ -42,7 +43,7 @@ void processFrame(cv::Mat image_rgb)
 	for (auto contourId = 0; contourId < contoursOut.size(); contourId++)
 	{
 		auto roi = markerObject->convertContourToRoi(contoursOut[contourId]);
-		auto crop = image_rgb(roi);
+		auto crop = image(roi);
 
 		cv::cvtColor(crop, crop, CV_RGB2GRAY);
 
@@ -77,7 +78,12 @@ void processFrame(cv::Mat image_rgb)
 			std::cout << "no contour before call" << std::endl;
 		}
 	}
-
+	cv::imshow("output", Marker::imageColor);
+	if (fps != 0)
+	{
+		cv::waitKey(1000 / fps);
+		outputVideo << Marker::imageColor;
+	}
 }
 
 int main(int argc, char* argv[])
@@ -109,8 +115,8 @@ int main(int argc, char* argv[])
 			capture.get(CV_CAP_PROP_FOURCC),
 			capture.get(CV_CAP_PROP_FPS),
 			cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-		auto fps = capture.get(CV_CAP_PROP_FPS);
-		markerObject = new Marker(fps, outputVideo);
+		fps = capture.get(CV_CAP_PROP_FPS);
+		markerObject = new Marker();
 		cv::Mat frame;
 		for (;;)
 		{
@@ -136,8 +142,8 @@ int main(int argc, char* argv[])
 			capture.get(CV_CAP_PROP_FOURCC),
 			capture.get(CV_CAP_PROP_FPS),
 			cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-		auto fps = capture.get(CV_CAP_PROP_FPS);
-		markerObject = new Marker(fps, outputVideo);
+		fps = capture.get(CV_CAP_PROP_FPS);
+		markerObject = new Marker();
 		cv::Mat frame;
 		for (;;)
 		{

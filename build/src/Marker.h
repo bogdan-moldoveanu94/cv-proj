@@ -6,8 +6,6 @@ class Marker
 {
 public:
 	Marker();
-	Marker(int fps);
-	Marker(int fpsVal, cv::VideoWriter outputVideoRef);
 	static void preProcessMarkers();
 	~Marker();
 	cv::Mat preProcessImage(cv::Mat image);
@@ -18,8 +16,9 @@ public:
 	void wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::Point2f> cropPoints, int bottomRightPointIndex) const;
 	void findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const;
 	static std::vector<cv::Point2f> markerCornerPoints;
+	static cv::Mat imageColor;
 private:
-	static cv::Mat markerLeo, markerVan, vanImage, monaImage, imageColor;
+	static cv::Mat markerLeo, markerVan, vanImage, monaImage;
 	cv::Mat imageGrayscale;
 };
 

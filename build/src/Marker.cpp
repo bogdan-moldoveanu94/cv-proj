@@ -1,5 +1,4 @@
 #include "Marker.h"
-#include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include "../../src/utils/Moore.hpp"
@@ -8,15 +7,12 @@
 #include "Helper.h"
 #include <opencv2/calib3d.hpp>
 #include <iterator>
-#include <opencv2/shape/shape_distance.hpp>
 
 
 #define DEBUG_MODE 0
 #define EPSILON 1E-5
 cv::Mat Marker::markerLeo, Marker::markerVan, Marker::vanImage, Marker::monaImage, Marker::imageColor;
 std::vector<cv::Point2f> Marker::markerCornerPoints;
-cv::VideoWriter outputVideo;
-int fps = 0;
 int i;
 
 bool intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2,
@@ -69,18 +65,6 @@ Marker::Marker()
 	i = 0;
 }
 
-Marker::Marker(int fpsVal)
-{
-	Marker::Marker();
-	fps = fpsVal;
-}
-
-Marker::Marker(int fpsVal, cv::VideoWriter outputVideoRef)
-{
-	Marker::Marker();
-	fps = fpsVal;
-	outputVideo = outputVideoRef;
-}
 void Marker::preProcessMarkers()
 {
 	cv::cvtColor(markerLeo, markerLeo, CV_RGB2GRAY);
@@ -312,14 +296,6 @@ void Marker::wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::P
 	cv::warpPerspective(whiteMask, whiteMask, H, wrappedImage.size());
 	whiteMask.copyTo(mask(roi));
 	wrappedImage.copyTo(imageColor(roi), mask(roi));
-
-	imshow("edges", imageColor);
-	if(fps != 0)
-	{
-		cv::waitKey(1000 / fps);
-		outputVideo << imageColor;
-	}
-
 }
 void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const
 {
