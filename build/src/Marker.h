@@ -12,7 +12,7 @@ public:
 	std::vector<std::vector<cv::Point>> findCandidateContours(cv::Mat image) const;
 	cv::Rect convertContourToRoi(std::vector<cv::Point>) const;
 	std::vector<cv::Point2f> orderContourPoints(std::vector<cv::Point> contours) const;
-	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal);
+	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps);
 private:
 	static cv::Mat markerLeo, markerVan, vanImage, monaImage, imageColor;
 	cv::Mat imageGrayscale;

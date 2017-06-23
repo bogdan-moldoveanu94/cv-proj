@@ -26,7 +26,7 @@ const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
 Marker* markerObject;
 
-void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
+void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 {
 	auto imageOriginal = image_rgb.clone();
 
@@ -117,6 +117,14 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		canonicalRoi.y = 15;
 		canonicalRoi.width = canonicalMarker.size().width - 30;
 		canonicalRoi.height = canonicalMarker.size().height - 30;
+		if(canonicalRoi.width <10)
+		{
+			canonicalRoi.width = 10;
+		}
+		if (canonicalRoi.height <10)
+		{
+			canonicalRoi.height = 10;
+		}
 		auto canonicalMarkerOriginal = canonicalMarkerWithCorners.clone();
 		canonicalMarker = canonicalMarker(canonicalRoi);
 		//imshow("can marker", canonicalMarker);
@@ -144,7 +152,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 		//Helper::findHomographyUsingContours(originalCrop, markerLeoOrig);
 		if (convertedContours.size() > 0)
 		{
-			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo, canonicalMarkerOriginal);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, convertedContours, imageOriginal, roi, outputVideo, canonicalMarkerOriginal, fps);
 		}
 		else
 		{
@@ -273,38 +281,70 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo)
 int main(int argc, char* argv[])
 {
 	markerObject = new Marker();
-	//cv::VideoCapture capture(argv[1]);
-	//if (!capture.isOpened())
-	//{
-	//	throw "Could not read file";
-	//}
-	////Assignment::runThirdAssignment(capture);
+
+	//VideoCapture cap(0); // open the default camera
+	//if (!cap.isOpened())  // check if we succeeded
+	//	return -1;
+
+	//Mat edges;
+	//namedWindow("edges", 1);
 	//// Setup output video
-	//cv::VideoWriter outputVideo("output.mp4",
-	//	capture.get(CV_CAP_PROP_FOURCC),
-	//	capture.get(CV_CAP_PROP_FPS),
-	//	cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-	//cv::Mat frame;
+	//cv::VideoWriter outputVideo("output.avi",
+	//	cap.get(CV_CAP_PROP_FOURCC),
+	//	cap.get(CV_CAP_PROP_FPS),
+	//	cv::Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
+	//auto fps = cap.get(CV_CAP_PROP_FPS);
 	//for (;;)
 	//{
-	//	capture >> frame;
-	//	if (frame.empty())
-	//	{
-	//		break;
-	//	}
-	//	doEveryting(frame, outputVideo);
+	//	Mat frame;
+	//	cap >> frame; // get a new frame from camera
+	//	//cvtColor(frame, edges, COLOR_BGR2GRAY);
+	//	//GaussianBlur(edges, edges, Size(7, 7), 1.5, 1.5);
+	//	//Canny(edges, edges, 0, 30, 3);
+	//	//imshow("edges", edges);
+	//	doEveryting(frame, outputVideo, fps);
+	//	//if (waitKey(30) >= 0) break;
 	//}
-	//outputVideo.release();
+	// the camera will be deinitialized automatically in VideoCapture destructor
+	//return 0;
 
-	cv::VideoWriter outputVideo;
-	// for image; TODO add abstraction for different types of imput
-	image_rgb = imread(argv[1], 1);
-	if (image_rgb.empty()) {
-		cout << "Cannot read image ";
-		return -1;
+
+	cv::VideoCapture capture(argv[1]);
+	if (!capture.isOpened())
+	{
+		throw "Could not read file";
 	}
-	doEveryting(image_rgb, outputVideo);
-	//
+	//Assignment::runThirdAssignment(capture);
+	// Setup output video
+	cv::VideoWriter outputVideo("output.avi",
+		capture.get(CV_CAP_PROP_FOURCC),
+		capture.get(CV_CAP_PROP_FPS),
+		cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+	auto fps = capture.get(CV_CAP_PROP_FPS);
+	cv::Mat frame;
+	namedWindow("MyVideo", CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
+	for (;;)
+	{
+		capture >> frame;
+		//imshow("MyVideo", frame);
+		//cv::waitKey(1000 / fps);
+		if (frame.empty())
+		{
+			break;
+		}
+		doEveryting(frame, outputVideo, fps);
+	}
+	outputVideo.release();
+
+	//cv::VideoWriter outputVideo;
+	//// for image; TODO add abstraction for different types of imput
+	//image_rgb = imread(argv[1], 1);
+	//if (image_rgb.empty()) {
+	//	cout << "Cannot read image ";
+	//	return -1;
+	//}
+	//doEveryting(image_rgb, outputVideo);
+	
 	cv::waitKey(0);
 	return 0;
 }

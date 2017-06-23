@@ -228,7 +228,7 @@ std::vector<cv::Point2f> Marker::orderContourPoints(std::vector<cv::Point> conto
 }
 
 
-void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal)
+void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv::Point2f> cropPoints, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps)
 {
 	auto cropPointsInImage = cropPoints;
 	cropPoints.clear();
@@ -238,10 +238,6 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	//cv::morphologyEx(marker, marker, cv::MORPH_CLOSE, element);
 	cv::resize(marker, marker, cv::Size(256, 256));
 	cv::resize(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(256, 256));
-
-
-
-
 	// use gaussian blur to get rid of noise
 	cv::GaussianBlur(marker, marker, cv::Size(5, 5), 0, 0);
 	cv::GaussianBlur(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(5, 5), 0, 0);
@@ -315,21 +311,6 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 	cv::findContours(cannyCrop, cropContours, cropH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
 	cropPoints = Helper::findCornersOnCrop(crop);
-	//imshow("canonical marker w/ roi", canonicalMarkerOriginal);
-	//std::vector< cv::Point2f > cornersCrop, cornersMarker, markerFeatures, canonicalFeatures;
-	//int maxCorners = 1;
-	//double qualityLevel = 0.01;
-	//double minDistance = 20.;
-	//cv::Mat mask;
-	//int blockSize = 3;
-	//bool useHarrisDetector = false;
-	//double k = 0.04;
-
-	//cv::goodFeaturesToTrack(crop, cornersCrop, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-	//cv::goodFeaturesToTrack(marker, markerFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-	//cv::goodFeaturesToTrack(canonicalMarkerOriginal, canonicalFeatures, maxCorners, qualityLevel, minDistance, mask, blockSize, useHarrisDetector, k);
-
-
 	if (found)
 	{
 		cv::Point2f bottomRightCorner;
@@ -348,14 +329,15 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 		std::vector<cv::Point> cropP, leoP, vanP;
 		std::vector<cv::Vec4i> hierarchy;
 		// keep this around atm for debug images
-		i = i + 1;
+		//i = i + 1;
 
 		auto leo = cv::matchShapes(markerLeo, marker, 2, 0.0);
 		auto van = cv::matchShapes(markerVan, marker, 2, 0.0);
 
 		if (strongLines.size() != 2)
 		{
-
+			imshow("edges", originalImage);
+			cv::waitKey(1000 / fps);
 		}
 		else
 		{
@@ -394,55 +376,20 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, std::vector<cv
 					cv::warpPerspective(vanImage, wrappedImage, H, crop.size());
 				}
 
+				cv::Mat mask(originalImage.size(), CV_8U, cv::Scalar(0,0,0));
+				
+				cv::Mat whiteMask(vanImage.size(), CV_8U, cv::Scalar(255, 255, 255));
+				cv::warpPerspective(whiteMask, whiteMask, H, wrappedImage.size());
+				whiteMask.copyTo(mask(roi));
+				wrappedImage.copyTo(originalImage(roi), mask(roi));
 
-				cv::Mat cropColor = originalImage(roi);
-				cv::Vec3b black = (0, 0, 0);
-				for (int i = 0; i < wrappedImage.size().width; i++)
-				{
-					for (int j = 0; j < wrappedImage.size().height; j++)
-					{
-						if (wrappedImage.at<cv::Vec3b>(cv::Point(i, j)) != black)
-						{
-							(cropColor.at<cv::Vec3b>(cv::Point(i, j)) = wrappedImage.at<cv::Vec3b>(cv::Point(i, j)));
-						}
-					}
-				}
-				cropColor.copyTo(originalImage(roi));
+				imshow("edges", originalImage);
+				cv::waitKey(1000 / fps);
 				outputVideo << originalImage;
-				imshow("www", originalImage);
-				//cv::imshow("wat", monaImage);
+
 			}
 		}
 	}
-}
-
-static double maximum(double number1, double number2, double number3) {
-	return std::max(std::max(number1, number2), number3);
-}
-static bool almostEqual(double number1, double number2) {
-	return (std::abs(number1 - number2) <= (EPSILON * maximum(1.0, std::abs(number1), std::abs(number2))));
-}
-
-static bool lineIntersection(const cv::Point2f &a1, const cv::Point2f &b1, const cv::Point2f &a2,
-	const cv::Point2f &b2, cv::Point2f &intersection) {
-	double A1 = b1.y - a1.y;
-	double B1 = a1.x - b1.x;
-	double C1 = (a1.x * A1) + (a1.y * B1);
-
-	double A2 = b2.y - a2.y;
-	double B2 = a2.x - b2.x;
-	double C2 = (a2.x * A2) + (a2.y * B2);
-
-	double det = (A1 * B2) - (A2 * B1);
-
-	if (!almostEqual(det, 0)) {
-		intersection.x = static_cast<float>(((C1 * B2) - (C2 * B1)) / (det));
-		intersection.y = static_cast<float>(((C2 * A1) - (C1 * A2)) / (det));
-
-		return true;
-	}
-
-	return false;
 }
 
 
