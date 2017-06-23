@@ -12,16 +12,21 @@
 #include "../build/src/Helper.h"
 #include "../build/src/Marker.h"
 
-using namespace cv;
-using namespace std;
 
-Mat image_rgb, image_grayscale, image_padded, frame_padded;
-const Scalar BLACK = cv::Scalar(0, 0, 0);
-const Scalar WHITE = cv::Scalar(255, 255, 255);
-const Vec3b RED = cv::Vec3b(0, 0, 255);
+cv::Mat image_rgb, image_grayscale, image_padded, frame_padded;
+const cv::Scalar BLACK = cv::Scalar(0, 0, 0);
+const cv::Scalar WHITE = cv::Scalar(255, 255, 255);
+const cv::Vec3b RED = cv::Vec3b(0, 0, 255);
 const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
 Marker* markerObject;
+
+enum INPUT_MODE
+{
+	IMAGE = 0,
+	VIDEO,
+	WEBCAM
+};
 
 void processFrame(cv::Mat image_rgb)
 {
@@ -30,8 +35,8 @@ void processFrame(cv::Mat image_rgb)
 	auto imageGrayOrig = image_grayscale;
 
 	auto thresholdedImage = markerObject->preProcessImage(image_rgb);
-	Mat drawing = Mat::zeros(thresholdedImage.size(), CV_8UC3);
-	vector<Vec4i> hierarchy;
+	cv::Mat drawing = cv::Mat::zeros(thresholdedImage.size(), CV_8UC3);
+	std::vector<cv::Vec4i> hierarchy;
 
 	auto contoursOut = markerObject->findCandidateContours(thresholdedImage);
 	for (auto contourId = 0; contourId < contoursOut.size(); contourId++)
@@ -46,18 +51,18 @@ void processFrame(cv::Mat image_rgb)
 
 		cv::Mat canonicalMarker;
 		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
-		
+
 
 		cv::Rect canonicalRoi;
 		canonicalRoi.x = 15;
 		canonicalRoi.y = 15;
 		canonicalRoi.width = canonicalMarker.size().width - 30;
 		canonicalRoi.height = canonicalMarker.size().height - 30;
-		if(canonicalRoi.width <10)
+		if (canonicalRoi.width < 10)
 		{
 			canonicalRoi.width = 10;
 		}
-		if (canonicalRoi.height <10)
+		if (canonicalRoi.height < 10)
 		{
 			canonicalRoi.height = 10;
 		}
@@ -69,7 +74,7 @@ void processFrame(cv::Mat image_rgb)
 		}
 		else
 		{
-			cout << "no contour before call" << endl;
+			std::cout << "no contour before call" << std::endl;
 		}
 	}
 
@@ -78,70 +83,77 @@ void processFrame(cv::Mat image_rgb)
 int main(int argc, char* argv[])
 {
 
-	//VideoCapture cap(0); // open the default camera
-	//if (!cap.isOpened())  // check if we succeeded
-	//	return -1;
-
-	//Mat edges;
-	//namedWindow("edges", 1);
-	//// Setup output video
-	//cv::VideoWriter outputVideo("output.avi",
-	//	cap.get(CV_CAP_PROP_FOURCC),
-	//	cap.get(CV_CAP_PROP_FPS),
-	//	cv::Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
-	//auto fps = cap.get(CV_CAP_PROP_FPS);
-	//for (;;)
-	//{
-	//	Mat frame;
-	//	cap >> frame; // get a new frame from camera
-	//	//cvtColor(frame, edges, COLOR_BGR2GRAY);
-	//	//GaussianBlur(edges, edges, Size(7, 7), 1.5, 1.5);
-	//	//Canny(edges, edges, 0, 30, 3);
-	//	//imshow("edges", edges);
-	//	doEveryting(frame, outputVideo, fps);
-	//	//if (waitKey(30) >= 0) break;
-	//}
-	// the camera will be deinitialized automatically in VideoCapture destructor
-	//return 0;
-
-
-	cv::VideoCapture capture(argv[1]);
-	if (!capture.isOpened())
+	switch (atoi(argv[2]))
 	{
-		throw "Could not read file";
-	}
-	//Assignment::runThirdAssignment(capture);
-	// Setup output video
-	cv::VideoWriter outputVideo("output.avi",
-		capture.get(CV_CAP_PROP_FOURCC),
-		capture.get(CV_CAP_PROP_FPS),
-		cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
-	auto fps = capture.get(CV_CAP_PROP_FPS);
-	markerObject = new Marker(fps, outputVideo);
-	cv::Mat frame;
-	namedWindow("MyVideo", CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
-	for (;;)
+	case IMAGE:
 	{
-		capture >> frame;
-		//imshow("MyVideo", frame);
-		//cv::waitKey(1000 / fps);
-		if (frame.empty())
-		{
-			break;
+		markerObject = new Marker();
+		auto image = cv::imread(argv[1], 1);
+		if (image.empty()) {
+			std::cout << "Cannot read image ";
+			return -1;
 		}
-		processFrame(frame);
+		processFrame(image);
+		cv::waitKey(0);
+		return 0;
+	};
+	case VIDEO:
+	{
+		cv::VideoCapture capture(argv[1]);
+		if (!capture.isOpened())
+		{
+			throw "Could not read video file";
+		}
+		// Setup output video
+		cv::VideoWriter outputVideo("output.avi",
+			capture.get(CV_CAP_PROP_FOURCC),
+			capture.get(CV_CAP_PROP_FPS),
+			cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+		auto fps = capture.get(CV_CAP_PROP_FPS);
+		markerObject = new Marker(fps, outputVideo);
+		cv::Mat frame;
+		for (;;)
+		{
+			capture >> frame;
+			if (frame.empty())
+			{
+				break;
+			}
+			processFrame(frame);
+		}
+		outputVideo.release();
+		return 0;
+	};
+	case WEBCAM:
+	{
+		cv::VideoCapture capture(0);
+		if (!capture.isOpened())
+		{
+			throw "Could not read video file";
+		}
+		// Setup output video
+		cv::VideoWriter outputVideo("output.avi",
+			capture.get(CV_CAP_PROP_FOURCC),
+			capture.get(CV_CAP_PROP_FPS),
+			cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
+		auto fps = capture.get(CV_CAP_PROP_FPS);
+		markerObject = new Marker(fps, outputVideo);
+		cv::Mat frame;
+		for (;;)
+		{
+			capture >> frame;
+			if (frame.empty())
+			{
+				break;
+			}
+			processFrame(frame);
+		}
+		outputVideo.release();
+		return 0;
+	};
+	default: {
+		std::cout << "no input mode available. exiting..." << std::endl;
+		return -1;
+	};
 	}
-	outputVideo.release();
-
-	//cv::VideoWriter outputVideo;
-	//// for image; TODO add abstraction for different types of imput
-	//image_rgb = imread(argv[1], 1);
-	//if (image_rgb.empty()) {
-	//	cout << "Cannot read image ";
-	//	return -1;
-	//}
-	//doEveryting(image_rgb, outputVideo);
-	
-	cv::waitKey(0);
-	return 0;
 }
