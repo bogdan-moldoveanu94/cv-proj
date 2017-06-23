@@ -13,7 +13,7 @@ public:
 	cv::Rect convertContourToRoi(std::vector<cv::Point>) const;
 	std::vector<cv::Point2f> orderContourPoints(std::vector<cv::Point> contours) const;
 	static bool detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>>* points);
-	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps);
+	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, double fps);
 	static std::vector<cv::Point2f> markerCornerPoints;
 private:
 	static cv::Mat markerLeo, markerVan, vanImage, monaImage, imageColor;

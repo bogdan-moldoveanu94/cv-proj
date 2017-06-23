@@ -247,7 +247,6 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 				strongLines.push_back(lines[i]);
 				break;
 			}
-
 		}
 	}
 
@@ -274,25 +273,20 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 	return true;
 }
 
-void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, cv::Mat canonicalMarkerOriginal, double fps)
+void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, double fps)
 {
 
 	cv::resize(marker, marker, cv::Size(256, 256));
-	cv::resize(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(256, 256));
 	// use gaussian blur to get rid of noise
 	cv::GaussianBlur(marker, marker, cv::Size(5, 5), 0, 0);
-	cv::GaussianBlur(canonicalMarkerOriginal, canonicalMarkerOriginal, cv::Size(5, 5), 0, 0);
 	// erode image to better detect points
 	//marker = Moore::performErosion(marker, 0, 1);
 
 	marker = Moore::performErosion(marker, 0, 5);
 	//marker = Moore::performDilation(marker, 0, 3);
-	canonicalMarkerOriginal = Moore::performErosion(canonicalMarkerOriginal, 0, 11);
-	canonicalMarkerOriginal = Moore::performDilation(canonicalMarkerOriginal, 0, 3);
 	//marker = Moore::performDilation(marker, 0, 1);
 	// threshold imagee for edge detection
 	cv::threshold(marker, marker, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-	cv::threshold(canonicalMarkerOriginal, canonicalMarkerOriginal, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 
 	cv::Mat cannyCrop;
 	std::vector<std::vector<cv::Point2f>> linesPoints;

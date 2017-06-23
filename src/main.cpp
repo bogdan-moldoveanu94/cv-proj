@@ -50,9 +50,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 
 		cv::Mat canonicalMarker;
 		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
-		cv::Mat canonicalMarkerWithCorners;
 		
-		cv::warpPerspective(imageGrayOrig, canonicalMarkerWithCorners, H, cv::Size(crop.size().width - 20, crop.size().height - 20));
 
 		cv::Rect canonicalRoi;
 		canonicalRoi.x = 15;
@@ -67,12 +65,11 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 		{
 			canonicalRoi.height = 10;
 		}
-		auto canonicalMarkerOriginal = canonicalMarkerWithCorners.clone();
 		canonicalMarker = canonicalMarker(canonicalRoi);
 
 		if (convertedContours.size() > 0)
 		{
-			markerObject->findHomographyFeatures(crop, canonicalMarker, imageOriginal, roi, outputVideo, canonicalMarkerOriginal, fps);
+			markerObject->findHomographyFeatures(crop, canonicalMarker, imageOriginal, roi, outputVideo, fps);
 		}
 		else
 		{
