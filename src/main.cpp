@@ -28,7 +28,6 @@ Marker* markerObject;
 
 void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 {
-	auto imageOriginal = image_rgb.clone();
 
 	cv::cvtColor(image_rgb, image_grayscale, CV_RGB2GRAY);
 	auto imageGrayOrig = image_grayscale;
@@ -69,7 +68,7 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 
 		if (convertedContours.size() > 0)
 		{
-			markerObject->findHomographyFeatures(crop, canonicalMarker, imageOriginal, roi, outputVideo, fps);
+			markerObject->findHomographyAndWriteImage(crop, canonicalMarker, roi);
 		}
 		else
 		{
@@ -81,7 +80,6 @@ void doEveryting(cv::Mat image_rgb, cv::VideoWriter outputVideo, double fps)
 
 int main(int argc, char* argv[])
 {
-	markerObject = new Marker();
 
 	//VideoCapture cap(0); // open the default camera
 	//if (!cap.isOpened())  // check if we succeeded
@@ -122,6 +120,7 @@ int main(int argc, char* argv[])
 		capture.get(CV_CAP_PROP_FPS),
 		cv::Size(capture.get(CV_CAP_PROP_FRAME_WIDTH), capture.get(CV_CAP_PROP_FRAME_HEIGHT)));
 	auto fps = capture.get(CV_CAP_PROP_FPS);
+	markerObject = new Marker(fps, outputVideo);
 	cv::Mat frame;
 	namedWindow("MyVideo", CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
 	for (;;)

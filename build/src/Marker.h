@@ -6,6 +6,8 @@ class Marker
 {
 public:
 	Marker();
+	Marker(int fps);
+	Marker(int fpsVal, cv::VideoWriter outputVideoRef);
 	static void preProcessMarkers();
 	~Marker();
 	cv::Mat preProcessImage(cv::Mat image);
@@ -13,11 +15,11 @@ public:
 	cv::Rect convertContourToRoi(std::vector<cv::Point>) const;
 	std::vector<cv::Point2f> orderContourPoints(std::vector<cv::Point> contours) const;
 	static bool detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>>* points);
-	void findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, double fps);
+	void wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::Point2f> cropPoints, int bottomRightPointIndex) const;
+	void findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const;
 	static std::vector<cv::Point2f> markerCornerPoints;
 private:
 	static cv::Mat markerLeo, markerVan, vanImage, monaImage, imageColor;
 	cv::Mat imageGrayscale;
-
 };
 

@@ -15,6 +15,8 @@
 #define EPSILON 1E-5
 cv::Mat Marker::markerLeo, Marker::markerVan, Marker::vanImage, Marker::monaImage, Marker::imageColor;
 std::vector<cv::Point2f> Marker::markerCornerPoints;
+cv::VideoWriter outputVideo;
+int fps = 0;
 int i;
 
 bool intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2,
@@ -63,11 +65,22 @@ Marker::Marker()
 	markerCornerPoints.push_back(cv::Point2f((float)0, (float)markerLeo.size().height));
 	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)markerLeo.size().height));
 	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)0));
-
 	preProcessMarkers();
 	i = 0;
 }
 
+Marker::Marker(int fpsVal)
+{
+	Marker::Marker();
+	fps = fpsVal;
+}
+
+Marker::Marker(int fpsVal, cv::VideoWriter outputVideoRef)
+{
+	Marker::Marker();
+	fps = fpsVal;
+	outputVideo = outputVideoRef;
+}
 void Marker::preProcessMarkers()
 {
 	cv::cvtColor(markerLeo, markerLeo, CV_RGB2GRAY);
@@ -273,7 +286,42 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 	return true;
 }
 
-void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat originalImage, cv::Rect roi, cv::VideoWriter outputVideo, double fps)
+void Marker::wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::Point2f> cropPoints, int bottomRightPointIndex) const
+{
+	cv::Mat wrappedImage;
+	auto additional = 0;
+	if (markerNumber == 0)
+	{
+		additional = 1;
+	}
+	std::rotate(cropPoints.begin(), cropPoints.begin() + bottomRightPointIndex, cropPoints.end());
+	std::rotate(cropPoints.begin(), cropPoints.begin() + 2, cropPoints.end());
+	cv::Mat H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
+	if (markerNumber == 0)
+	{
+		cv::warpPerspective(monaImage, wrappedImage, H, roi.size());
+	}
+	else
+	{
+		cv::warpPerspective(vanImage, wrappedImage, H, roi.size());
+	}
+
+	cv::Mat mask(imageColor.size(), CV_8U, cv::Scalar(0, 0, 0));
+
+	cv::Mat whiteMask(vanImage.size(), CV_8U, cv::Scalar(255, 255, 255));
+	cv::warpPerspective(whiteMask, whiteMask, H, wrappedImage.size());
+	whiteMask.copyTo(mask(roi));
+	wrappedImage.copyTo(imageColor(roi), mask(roi));
+
+	imshow("edges", imageColor);
+	if(fps != 0)
+	{
+		cv::waitKey(1000 / fps);
+		outputVideo << imageColor;
+	}
+
+}
+void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const
 {
 
 	cv::resize(marker, marker, cv::Size(256, 256));
@@ -325,8 +373,8 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat origin
 
 		if (!foundEnoughLines)
 		{
-			imshow("edges", originalImage);
-			cv::waitKey(1000 / fps);
+			//imshow("edges", originalImage);
+			//cv::waitKey(1000 / fps);
 		}
 		else
 		{
@@ -334,53 +382,10 @@ void Marker::findHomographyFeatures(cv::Mat crop, cv::Mat marker, cv::Mat origin
 			std::cout << "leo match:" << leo << std::endl;
 			std::cout << "van match: " << van << std::endl;
 #endif
-			if (leo < van)
-			{
-#if DEBUG_MODE
-				std::cout << "marker leo detected" << std::endl;
-				std::cout << std::endl;
-#endif
-				markerNumber = 0;
-			}
-			else
-			{
-#if DEBUG_MODE
-				std::cout << "marker van detected" << std::endl;
-				std::cout << std::endl;
-#endif
-				markerNumber = 1;
-			}
 			if (cropPoints.size() > 0)
 			{
-				cv::Mat wrappedImage;
-				auto additional = 0;
-				if (markerNumber == 0)
-				{
-					additional = 1;
-				}
-				std::rotate(cropPoints.begin(), cropPoints.begin() + bottomRightPointIndex, cropPoints.end());
-				std::rotate(cropPoints.begin(), cropPoints.begin() + 2 , cropPoints.end());
-				cv::Mat H = cv::findHomography(markerCornerPoints, cropPoints, CV_RANSAC, 3.0);
-				if (markerNumber == 0)
-				{
-					cv::warpPerspective(monaImage, wrappedImage, H, crop.size());
-				}
-				else
-				{
-					cv::warpPerspective(vanImage, wrappedImage, H, crop.size());
-				}
-
-				cv::Mat mask(originalImage.size(), CV_8U, cv::Scalar(0,0,0));
-				
-				cv::Mat whiteMask(vanImage.size(), CV_8U, cv::Scalar(255, 255, 255));
-				cv::warpPerspective(whiteMask, whiteMask, H, wrappedImage.size());
-				whiteMask.copyTo(mask(roi));
-				wrappedImage.copyTo(originalImage(roi), mask(roi));
-
-				imshow("edges", originalImage);
-				cv::waitKey(1000 / fps);
-				outputVideo << originalImage;
-
+				markerNumber = static_cast<int>(leo > van);
+				Marker::wrapMarkerOnImage(markerNumber, roi, cropPoints, bottomRightPointIndex);
 			}
 		}
 	}
