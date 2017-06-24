@@ -51,21 +51,21 @@ void processFrame(cv::Mat image)
 		auto H = cv::getPerspectiveTransform(convertedContours, Marker::markerCornerPoints);
 
 		cv::Mat canonicalMarker;
-		cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
-
+		//cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
+		cv::warpPerspective(image, canonicalMarker, H, cv::Size(256,256));
 
 		cv::Rect canonicalRoi;
-		canonicalRoi.x = 5;
-		canonicalRoi.y = 5;
-		canonicalRoi.width = canonicalMarker.size().width - 5;
-		canonicalRoi.height = canonicalMarker.size().height - 5;
-		if (canonicalRoi.width < 10)
+		canonicalRoi.x = 18;
+		canonicalRoi.y = 18;
+		canonicalRoi.width = canonicalMarker.size().width -30;
+		canonicalRoi.height = canonicalMarker.size().height - 30;
+		if (canonicalRoi.width < 15)
 		{
-			canonicalRoi.width = 10;
+			canonicalRoi.width = 15;
 		}
-		if (canonicalRoi.height < 10)
+		if (canonicalRoi.height < 15)
 		{
-			canonicalRoi.height = 10;
+			canonicalRoi.height = 15;
 		}
 		canonicalMarker = canonicalMarker(canonicalRoi);
 

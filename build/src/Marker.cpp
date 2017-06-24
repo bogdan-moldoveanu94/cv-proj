@@ -239,8 +239,12 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 		for (auto i = 1; i < lines.size(); i++)
 		{
 			float rho = lines[i][0], theta = lines[i][1];
-			if (rho > rho0 + 15 || theta > theta0 + 0.15 || rho - 15 < rho0 || theta - 0.15 < theta0)
+			if (rho > rho0 + 15 || theta > theta0 + 2.7 || rho - 15 < rho0 || theta < theta0 - 2.7)
 			{
+				if (theta > theta0 + 0.3 || theta < theta0 - 0.3)
+				{
+
+				}
 				strongLines.push_back(lines[i]);
 				break;
 			}
@@ -251,7 +255,8 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 	{
 		return false;
 	}
-
+	cv::Mat img;
+	cv::cvtColor(imageCanny, img, CV_GRAY2BGR);
 	for (size_t i = 0; i < strongLines.size(); i++)
 	{
 		float rho = strongLines[i][0], theta = strongLines[i][1];
@@ -266,7 +271,21 @@ bool Marker::detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::P
 		temp.push_back(pt1);
 		temp.push_back(pt2);
 		points->push_back(temp);
+		line(img, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
 	}
+	for (auto i = 0; i < lines.size(); i++)
+	{
+		float rho = lines[i][0], theta = lines[i][1];
+		cv::Point pt1, pt2;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a*rho, y0 = b*rho;
+		pt1.x = cvRound(x0 + 1000 * (-b));
+		pt1.y = cvRound(y0 + 1000 * (a));
+		pt2.x = cvRound(x0 - 1000 * (-b));
+		pt2.y = cvRound(y0 - 1000 * (a));
+		//line(img, pt1, pt2, cv::Scalar(0, 0, 255), 3, CV_AA);
+	}
+	cv::imshow("lines" + std::to_string(i), img);
 	return true;
 }
 
@@ -300,22 +319,34 @@ void Marker::wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::P
 void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const
 {
 	i++;
-	//cv::imshow("www" + std::to_string(i), marker);
+
 	cv::resize(marker, marker, cv::Size(256, 256));
 	// use gaussian blur to get rid of noise
-	cv::GaussianBlur(marker, marker, cv::Size(5, 5), 0, 0);
+	//marker.convertTo(marker, CV_8UC1, 1 / 256);
+	cv::cvtColor(marker, marker, CV_RGB2GRAY);
+
+	cv::GaussianBlur(marker, marker, cv::Size(9, 9), 0, 0);
+	cv::Mat temp = marker.clone();
+	marker.empty();
+	cv::bilateralFilter(temp, marker, 3, 75, 75);
 	// erode image to better detect points
 	//marker = Moore::performErosion(marker, 0, 1);
+	//cv::imshow("www" + std::to_string(i), marker);
+	/// with erosion 5 everything was fine except test image 3 which missasigns van to leo. orientation is goood
+	auto markerForLines = Moore::performErosion(marker, 0, 5);
 
-	marker = Moore::performErosion(marker, 0, 5);
+	//markerForLines = Moore::performErosion(markerForLines, 0, 3);
+	markerForLines = Moore::performDilation(markerForLines, 0, 5);
+
+	auto markerForShape = Moore::performErosion(marker, 0, 3);
 	//marker = Moore::performDilation(marker, 0, 3);
 	//marker = Moore::performDilation(marker, 0, 1);
 	// threshold imagee for edge detection
-	cv::threshold(marker, marker, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-
+	cv::threshold(markerForLines, markerForLines, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	cv::threshold(markerForShape, markerForShape, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 	cv::Mat cannyCrop;
 	std::vector<std::vector<cv::Point2f>> linesPoints;
-	auto foundEnoughLines = Marker::detectStrongLinePoints(marker, &linesPoints);
+	auto foundEnoughLines = Marker::detectStrongLinePoints(markerForLines, &linesPoints);
 
 	cv::Point2f r;
 	auto found = false;
@@ -323,9 +354,6 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 	{
 		found = intersection(linesPoints[0][0], linesPoints[0][1], linesPoints[1][0], linesPoints[1][1], r);
 	}
-	std::vector<std::vector<cv::Point>> cropContours;
-	std::vector<cv::Vec4i> cropH;
-	cv::findContours(cannyCrop, cropContours, cropH, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
 
 	auto cropPoints = Helper::findCornersOnCrop(crop);
 	if (found)
@@ -345,15 +373,10 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 		auto markerNumber = -1;
 		std::vector<cv::Vec4i> hierarchy;
 
-		auto leo = cv::matchShapes(markerLeo, marker, 2, 0.0);
-		auto van = cv::matchShapes(markerVan, marker, 2, 0.0);
+		auto leo = cv::matchShapes(markerLeo, markerForShape, 2, 0.0);
+		auto van = cv::matchShapes(markerVan, markerForShape, 2, 0.0);
 
-		if (!foundEnoughLines)
-		{
-			//imshow("edges", originalImage);
-			//cv::waitKey(1000 / fps);
-		}
-		else
+		if (foundEnoughLines)
 		{
 #if DEBUG_MODE
 			std::cout << "leo match:" << leo << std::endl;
