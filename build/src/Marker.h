@@ -14,7 +14,9 @@ public:
 	std::vector<std::vector<cv::Point>> findCandidateContours(cv::Mat image) const;
 	cv::Rect convertContourToRoi(std::vector<cv::Point>) const;
 	std::vector<cv::Point2f> orderContourPoints(std::vector<cv::Point> contours) const;
+	int computerOrientationFromLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>> points) const;
 	static bool detectStrongLinePoints(cv::Mat image, std::vector<std::vector<cv::Point2f>>* points);
+	int detectMarkerOrientation(cv::Mat image) const;
 	void wrapMarkerOnImage(int markerNumber, cv::Rect roi, std::vector<cv::Point2f> cropPoints, int bottomRightPointIndex) const;
 	void findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const;
 	static std::vector<cv::Point2f> markerCornerPoints;
