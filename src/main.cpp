@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include "utils/Moore.hpp"
 #include <fstream>
-#include "../build/src/Marker.h"
 #include <ctime>
+#include "utils/Marker.h"
 
 #define NUM_FRAMES 60
 cv::Mat image_rgb, image_grayscale, image_padded, frame_padded;
