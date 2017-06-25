@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "utils/Moore.hpp"
 #include <fstream>
-#include "../build/src/Helper.h"
 #include "../build/src/Marker.h"
 #include <ctime>
 
@@ -33,11 +32,8 @@ void processFrame(cv::Mat image)
 {
 
 	cv::cvtColor(image, image_grayscale, CV_RGB2GRAY);
-	auto imageGrayOrig = image_grayscale;
 
 	auto thresholdedImage = markerObject->preProcessImage(image);
-	cv::Mat drawing = cv::Mat::zeros(thresholdedImage.size(), CV_8UC3);
-	std::vector<cv::Vec4i> hierarchy;
 
 	auto contoursOut = markerObject->findCandidateContours(thresholdedImage);
 	for (auto contourId = 0; contourId < contoursOut.size(); contourId++)
@@ -51,7 +47,6 @@ void processFrame(cv::Mat image)
 		auto H = cv::getPerspectiveTransform(convertedContours, Marker::markerCornerPoints);
 
 		cv::Mat canonicalMarker;
-		//cv::warpPerspective(imageGrayOrig, canonicalMarker, H, crop.size());
 		cv::warpPerspective(image, canonicalMarker, H, cv::Size(256,256));
 
 		cv::Rect canonicalRoi;

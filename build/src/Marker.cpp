@@ -4,7 +4,6 @@
 #include "../../src/utils/Moore.hpp"
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d/calib3d_c.h>
-#include "Helper.h"
 #include <opencv2/calib3d.hpp>
 #include <iterator>
 #include <iostream>
@@ -407,9 +406,10 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 	cv::cvtColor(marker, marker, CV_RGB2GRAY);
 	// use gaussian blur to get rid of noise
 	cv::GaussianBlur(marker, marker, cv::Size(9, 9), 0, 0);
-	cv::Mat temp1 = marker.clone();
-	marker.empty();
-	cv::bilateralFilter(temp1, marker, 5, 75, 75);
+
+	//cv::Mat temp = marker.clone();
+	//marker.empty();
+	//cv::bilateralFilter(temp, marker, 5, 75, 75);
 
 	// erode image to better detect points
 	auto markerForLines = marker.clone();
@@ -422,28 +422,39 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 	cv::threshold(markerForShape, markerForShape, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
 
 	auto bottomRightPointIndex = Marker::detectMarkerOrientation(markerForLines);
-	auto markerNumber = -1;
-	std::vector<cv::Vec4i> hierarchy;
 
 	auto leo = cv::matchShapes(markerLeo, markerForShape, 2, 0.0);
 	auto van = cv::matchShapes(markerVan, markerForShape, 2, 0.0);
-	auto cropPoints = Helper::findCornersOnCrop(crop);
+
+	auto contours = Marker::findCandidateContours(crop);
+	std::vector<cv::Point> convertedContour;
+	std::vector<cv::Point2f> cropPoints;
+	if(contours.size() != 0)
+	{
+		for (auto i = 0; i < contours[0].size(); i++)
+		{
+			convertedContour.push_back(cv::Point2f((float)contours[0][i].x, (float)contours[0][i].y));
+		}
+		cropPoints = Marker::orderContourPoints(convertedContour);
+	}
 
 #if DEBUG_MODE
-	std::cout << "leo match:" << leo << std::endl;
-	std::cout << "van match: " << van << std::endl;
+	std::cout << "Leo match:" << leo << std::endl;
+	std::cout << "Van match: " << van << std::endl;
 #endif
 	if (cropPoints.size() > 0)
 	{
-		markerNumber = static_cast<int>(leo > van);
+		auto markerNumber = static_cast<int>(leo > van);
+#if DEBUG_MODE
 		if (markerNumber)
 		{
-			cv::imshow("marker vam", markerForLines);
+			cv::imshow("Marker van detected", markerForLines);
 		}
 		else
 		{
-			cv::imshow("markerleo", markerForLines);
+			cv::imshow("Marker leo detected", markerForLines);
 		}
+#endif
 		Marker::wrapMarkerOnImage(markerNumber, roi, cropPoints, bottomRightPointIndex);
 	}
 
