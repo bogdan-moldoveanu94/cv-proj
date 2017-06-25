@@ -18,15 +18,18 @@ const cv::Scalar WHITE = cv::Scalar(255, 255, 255);
 const cv::Vec3b RED = cv::Vec3b(0, 0, 255);
 const int MIN_COMPONENT_LENGTH = 100;
 const int MAX_COMPONENT_LENGTH = 200;
+
 Marker* markerObject;
 int fps = 0;
 cv::VideoWriter outputVideo;
+
 enum INPUT_MODE
 {
 	IMAGE = 0,
 	VIDEO,
 	WEBCAM
 };
+
 
 void processFrame(cv::Mat image)
 {
@@ -46,23 +49,11 @@ void processFrame(cv::Mat image)
 		auto convertedContours = markerObject->orderContourPoints(contoursOut[contourId]);
 		auto H = cv::getPerspectiveTransform(convertedContours, Marker::markerCornerPoints);
 
-		cv::Mat canonicalMarker;
-		cv::warpPerspective(image, canonicalMarker, H, cv::Size(256,256));
 
-		cv::Rect canonicalRoi;
-		canonicalRoi.x = 18;
-		canonicalRoi.y = 18;
-		canonicalRoi.width = canonicalMarker.size().width -30;
-		canonicalRoi.height = canonicalMarker.size().height - 30;
-		if (canonicalRoi.width < 15)
-		{
-			canonicalRoi.width = 15;
-		}
-		if (canonicalRoi.height < 15)
-		{
-			canonicalRoi.height = 15;
-		}
-		canonicalMarker = canonicalMarker(canonicalRoi);
+		cv::Mat canonicalMarker;
+		cv::warpPerspective(image, canonicalMarker, H, cv::Size(MARKER_WIDTH, MARKER_HEIGHT));
+
+		canonicalMarker = canonicalMarker(Marker::canonicalRoi);
 
 		if (convertedContours.size() > 0)
 		{
@@ -85,7 +76,6 @@ void processFrame(cv::Mat image)
 
 int main(int argc, char* argv[])
 {
-
 	switch (atoi(argv[1]))
 	{
 	case IMAGE:

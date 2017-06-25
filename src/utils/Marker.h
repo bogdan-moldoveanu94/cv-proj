@@ -3,6 +3,8 @@
 #include <opencv2/videoio.hpp>
 
 #define DEBUG_MODE 0
+#define MARKER_WIDTH 256
+#define MARKER_HEIGHT 256
 
 class Marker
 {
@@ -21,8 +23,11 @@ public:
 	void findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect roi) const;
 	static std::vector<cv::Point2f> markerCornerPoints;
 	static cv::Mat imageColor;
+	static cv::Rect canonicalRoi;
+
 private:
 	static cv::Mat markerLeo, markerVan, vanImage, monaImage;
 	cv::Mat imageGrayscale;
+	bool intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2, cv::Point2f& r) const;
 };
 

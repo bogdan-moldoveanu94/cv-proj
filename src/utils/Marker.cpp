@@ -8,7 +8,6 @@
 #include <iterator>
 #include <iostream>
 
-
 #define EPSILON 1E-5
 #define MAX_CORNERS 15
 #define MIN_EUCLIDEAN_DISTANCE 20.
@@ -17,17 +16,18 @@
 #define BLOCK_SIZE 3
 #define LEO_IMAGE 0
 #define VAN_IMAGE 1
+
 cv::Mat Marker::markerLeo, Marker::markerVan, Marker::vanImage, Marker::monaImage, Marker::imageColor;
 std::vector<cv::Point2f> Marker::markerCornerPoints;
+cv::Rect Marker::canonicalRoi;
 
-bool intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2,
-	cv::Point2f &r)
+bool Marker::intersection(cv::Point2f o1, cv::Point2f p1, cv::Point2f o2, cv::Point2f p2, cv::Point2f &r) const
 {
-	cv::Point2f x = o2 - o1;
-	cv::Point2f d1 = p1 - o1;
-	cv::Point2f d2 = p2 - o2;
+	auto x = o2 - o1;
+	auto d1 = p1 - o1;
+	auto d2 = p2 - o2;
 
-	float cross = d1.x*d2.y - d1.y*d2.x;
+	auto cross = d1.x*d2.y - d1.y*d2.x;
 	if (abs(cross) < EPSILON)
 		return false;
 
@@ -62,10 +62,26 @@ Marker::Marker()
 	}
 
 	// define points in counter-clockwise order starting from top-left corner
-	markerCornerPoints.push_back(cv::Point2f((float)0, (float)0));
-	markerCornerPoints.push_back(cv::Point2f((float)0, (float)markerLeo.size().height));
-	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)markerLeo.size().height));
-	markerCornerPoints.push_back(cv::Point2f((float)markerLeo.size().width, (float)0));
+	markerCornerPoints.push_back(cv::Point2f(float(0), float(0)));
+	markerCornerPoints.push_back(cv::Point2f(float(0), float(markerLeo.size().height)));
+	markerCornerPoints.push_back(cv::Point2f(float(markerLeo.size().width), float(markerLeo.size().height)));
+	markerCornerPoints.push_back(cv::Point2f(float(markerLeo.size().width), float(0)));
+	
+	// init a roi which will be used to crop the background from a canonical representation of the crop
+
+	canonicalRoi.x = 18;
+	canonicalRoi.y = 18;
+	canonicalRoi.width = MARKER_WIDTH - 30;
+	canonicalRoi.height = MARKER_HEIGHT - 30;
+	if (canonicalRoi.width < 15)
+	{
+		canonicalRoi.width = 15;
+	}
+	if (canonicalRoi.height < 15)
+	{
+		canonicalRoi.height = 15;
+	}
+
 	preProcessMarkers();
 }
 
@@ -457,8 +473,6 @@ void Marker::findHomographyAndWriteImage(cv::Mat crop, cv::Mat marker, cv::Rect 
 #endif
 		Marker::wrapMarkerOnImage(markerNumber, roi, cropPoints, bottomRightPointIndex);
 	}
-
-
 }
 
 
