@@ -86,12 +86,12 @@ void processFrame(cv::Mat image)
 int main(int argc, char* argv[])
 {
 
-	switch (atoi(argv[2]))
+	switch (atoi(argv[1]))
 	{
 	case IMAGE:
 	{
 		markerObject = new Marker();
-		auto image = cv::imread(argv[1], 1);
+		auto image = cv::imread(argv[2], 1);
 		if (image.empty()) {
 			std::cout << "Cannot read image ";
 			return -1;
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
 	};
 	case VIDEO:
 	{
-		cv::VideoCapture capture(argv[1]);
+		cv::VideoCapture capture(argv[2]);
 		if (!capture.isOpened())
 		{
 			throw "Could not read video file";
